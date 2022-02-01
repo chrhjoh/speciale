@@ -5,8 +5,9 @@ from torch.nn import init
 
 class Net(nn.Module):
     def __init__(self,
-                n_local_feat,
-                n_global_feat, 
+                local_features,
+                global_features,
+                use_global_features,
                 cnn_one_channel = 100,
                 cnn_two_channel = 100,
                 cnn_kernel_size = 3,
@@ -15,14 +16,23 @@ class Net(nn.Module):
                 pool_kernel = 2,
                 pool_stride = 2,
                 rnn_hidden = 26,
-                dropout = 0.5,
+                dropout = 0.3,
                 dense_one = 60,
                 dense_two = 60):
 
         super(Net, self).__init__()  
 
+        # Assign which features to use
+        self.local_features = local_features
+        self.n_local_feat = len(local_features)
+        if use_global_features: 
+            self.global_features = global_features
+            self.n_global_feat = len(global_features)
+            
+        self.use_global_features = use_global_features
+        
         # Convolutional Layers
-        self.conv1 = nn.Conv1d(in_channels  = n_local_feat,
+        self.conv1 = nn.Conv1d(in_channels  = self.n_local_feat,
                                out_channels = cnn_one_channel,
                                kernel_size  = cnn_kernel_size,
                                stride       = cnn_stride,
@@ -56,16 +66,23 @@ class Net(nn.Module):
                             bidirectional = True)
 
         # Dense layers
-        self.dense1 = nn.Linear(rnn_hidden*2 + n_global_feat, dense_one)
+        if self.use_global_features:
+            self.dense1 = nn.Linear(rnn_hidden*2 + self.n_global_feat, dense_one)
+        else:
+            self.dense1 = nn.Linear(rnn_hidden*2, dense_one)
         self.dense2 = nn.Linear(dense_one, dense_two)
         self.dense3 = nn.Linear(dense_two, 1)
         
 
         # Batch normalization
-        self.bn_start = nn.BatchNorm1d(n_local_feat)
+        self.bn_start = nn.BatchNorm1d(self.n_local_feat)
         self.bn_cnn1 = nn.BatchNorm1d(cnn_one_channel)
         self.bn_cnn2 = nn.BatchNorm1d(cnn_two_channel)
-        self.bn_dense = nn.BatchNorm1d(rnn_hidden*2 + n_global_feat)
+
+        if self.use_global_features:
+            self.bn_dense = nn.BatchNorm1d(rnn_hidden*2 + self.n_global_feat)
+        else:
+            self.bn_dense = nn.BatchNorm1d(rnn_hidden*2)
 
         # Dropout
         self.drop = nn.Dropout(p = dropout)
@@ -80,8 +97,10 @@ class Net(nn.Module):
          
     def forward(self, x):
         # global features are the same for the whole sequence -> take first value
-        global_features = x[:, 27:, 0]
-        local_features = x[:, :27, :]
+        if self.use_global_features:
+            global_features = x[:, self.global_features, 0]
+
+        local_features = x[:, self.local_features, :]
         x = self.bn_start(local_features)
 
         # Convolutional 1
@@ -107,7 +126,9 @@ class Net(nn.Module):
 
         # combine outputs
         x = torch.cat((h[-2, :, :], h[-1, :, :]), dim=1)  # concatenate bidirectional output of last layer
-        x = torch.cat((x, global_features), dim=1) # add global features
+
+        if self.use_global_features:
+            x = torch.cat((x, global_features), dim=1) # add global features
         
         # Dense
         x = self.drop(x)

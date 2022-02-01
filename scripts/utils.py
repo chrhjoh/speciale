@@ -9,7 +9,7 @@ from sklearn import metrics
 
 
 
-def load_data(path : str, partitions, batch_size: int, seed : int) -> Tuple[DataLoader, np.ndarray] :
+def load_data(path : str, partitions, batch_size: int, seq_idx : np.ndarray, seed : int) -> Tuple[DataLoader, np.ndarray] :
     if isinstance(partitions, int):
         data = np.load(path + f"P{partitions}_input.npz")["arr_0"]
         targets = np.load(path + f"P{partitions}_labels.npz")["arr_0"]
@@ -18,11 +18,12 @@ def load_data(path : str, partitions, batch_size: int, seed : int) -> Tuple[Data
         data = np.concatenate([np.load(path + f"P{partition}_input.npz")["arr_0"] for partition in partitions])
         targets = np.concatenate([np.load(path + f"P{partition}_labels.npz")["arr_0"] for partition in partitions])
     idxs = np.random.permutation(data.shape[0])
-    data = data[idxs]
+    data = data[idxs, :, :] # Permute observations
+    data = data[:,seq_idx, :] # Subset sequences
     targets = targets[idxs]
     data_list = [[np.transpose(data[i]), targets[i]] for i in range(len(data))]
 
-    return DataLoader(data_list, batch_size,), targets
+    return DataLoader(data_list, batch_size,), data, targets
 
 class Runner:
 
