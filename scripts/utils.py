@@ -27,7 +27,7 @@ def load_data(path : str, partitions, batch_size: int, seq_idx : np.ndarray, see
 
 class Runner:
 
-    def __init__(self, loader: DataLoader, model: nn.Module, criterion, loss_weight, optimizer = None, cutoff = 0.5):
+    def __init__(self, loader: DataLoader, model: nn.Module, criterion, loss_weight, device="cpu", optimizer = None, cutoff = 0.5):
         self.loader = loader
         self.model = model
         self.optimizer = optimizer
@@ -39,6 +39,7 @@ class Runner:
         self.y_score_batches = []
         self.loss = 0
         self.mode = "Train" if optimizer != None else "Validation"
+        self.device = device
 
     def weighted_loss(self, pred, y):
         """
@@ -69,34 +70,36 @@ class Runner:
             self.model.eval()
 
         for x, y  in self.loader:
-            x = x.float()
-            y = y.float().unsqueeze(1)
+            x = x.float().to(self.device)
+            y = y.float().unsqueeze(1).to(self.device)
             scores = self.model(x)
 
             # Calculate loss
-            weighted_loss = self.weighted_loss(scores, y)
+            loss = self.weighted_loss(scores, y)
+            #loss = torch.mean(self.criterion(scores, y))
 
             # Take step on gradient if training
             if self.mode == "Train":
                 self.optimizer.zero_grad()
-                weighted_loss.backward()
+                loss.backward()
                 self.optimizer.step()
             
             # Round off predictions based on cutoff
+            scores = scores.detach().to("cpu")
             pred = np.zeros(shape=scores.shape)
             pred[scores >= self.cutoff] = 1
 
 
             # Store results from batch
-            self.y_true_batches += [y.detach().numpy()]
+            self.y_true_batches += [y.detach().to("cpu").numpy()]
             self.y_pred_batches += [pred]
-            self.y_score_batches += [scores.detach().numpy()]
-            self.loss += weighted_loss.detach()
+            self.y_score_batches += [scores.numpy()]
+            self.loss += loss.detach()
 
         self.y_true_batches = np.vstack(self.y_true_batches)
         self.y_pred_batches = np.vstack(self.y_pred_batches)
         self.y_score_batches = np.vstack(self.y_score_batches)
-        self.loss = self.loss.item() / len(self.loader.dataset) # Divide with batch numbers for average loss per data point
+        self.loss = self.loss.item() / len(self.loader) # Divide with batch numbers for average loss per data point
 
     def evaluate_model(self):
             # Loss
