@@ -52,7 +52,9 @@ class Runner:
     
     def follow_performance(self, epoch):
         if self.mode == "Train" : print("Epoch:", epoch)
-        print(self.mode ,"loss:", self.loss, self.mode, "MCC:", metrics.matthews_corrcoef(self.y_true_batches, self.y_pred_batches))
+        print(self.mode ,"loss:", self.loss, 
+             self.mode, "MCC:", self.mcc,
+             self.mode, "AUC:", self.auc)
         
     def reset(self):
         self.y_pred_batches = []
@@ -100,6 +102,9 @@ class Runner:
         self.y_pred_batches = np.vstack(self.y_pred_batches)
         self.y_score_batches = np.vstack(self.y_score_batches)
         self.loss = self.loss.item() / len(self.loader) # Divide with batch numbers for average loss per data point
+        
+        self.auc = metrics.roc_auc_score(self.y_true_batches, self.y_score_batches)
+        self.mcc = metrics.matthews_corrcoef(self.y_true_batches, self.y_pred_batches)
 
     def evaluate_model(self):
             # Loss
@@ -130,20 +135,21 @@ class Runner:
 
 
 class EarlyStopping:
-    def __init__(self, patience: int, path : str = ""):
+    def __init__(self, patience: int, filename = "early_stopping.pt", path : str = ""):
         self.patience = patience
         self.current_count = 0
         self.best_loss = np.inf
         self.stop = False
         self.path = path
+        self.filename = filename
     
-    def evaluate_epoch(self, runner: Runner, model: nn.Module, epoch: int):
+    def evaluate_epoch(self, metric: float, model: nn.Module, epoch: int):
 
-        if runner.loss < self.best_loss:
-            self.best_loss = runner.loss
+        if metric < self.best_loss:
+            self.best_loss = metric
             self.best_epoch = epoch
             self.current_count = 0
-            torch.save(model.state_dict(), self.path + 'early_stopping_state.pt')
+            torch.save(model.state_dict(), self.path + self.filename)
             print("Validation loss decreased. Counter reset")
         else:
             self.current_count += 1
