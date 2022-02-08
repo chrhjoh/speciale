@@ -39,25 +39,51 @@ def find_cdr3_stop(sequences, features):
         if cdr3_end ==-1:
             print("Error in",seq[cdr3_start-1:])
         
-        features[id]["CDR3-end"] = cdr3_start + cdr3_end
+        features[id]["CDR3-stop"] = cdr3_start + cdr3_end
+    return features
+
+def extract_features(sequences : dict, features : dict) -> dict:
+    cdrs = dict()
+    for id in sequences:
+        cdrs[id] = dict()
+        seq = sequences[id]
+        feat = features[id]
+        cdrs[id]["CDR1"] = seq[feat["CDR1-start"]-1:feat["CDR1-stop"]]
+        cdrs[id]["CDR2"] = seq[feat["CDR2-start"]-1:feat["CDR2-stop"]]
+        cdrs[id]["CDR3"] = seq[feat["CDR3-start"]-1:feat["CDR3-stop"]]
+
+    return cdrs
+
+def write_cdrs(cdrs: dict, filename : str) -> None:
+
+    with open(filename, "w") as fh:
+        for id in cdrs:
+            fh.write(">"+id+"\n")
+            fh.write(cdrs[id]["CDR1"]+"\t")
+            fh.write(cdrs[id]["CDR2"]+"\t")
+            fh.write(cdrs[id]["CDR3"]+"\n")
 
 
-def extract_features(sequences, features):
-    pass
+    #Return dict of dicts. ID as key and then features as keys in inner dict
 
 def main():
     data_dir = "data/"
-    alpha_igblast = data_dir + "alpha_igblast.txt"
-    beta_igblast = data_dir + "beta_igblast.txt"
-    alpha_file = data_dir + "alpha_chains.fa"
-    beta_file = data_dir + "beta_chains.fa"
+    alpha_igblast = data_dir + "igblast/alpha_igblast.txt"
+    beta_igblast = data_dir + "igblast/beta_igblast.txt"
+    alpha_file = data_dir + "fasta/alpha_chains.fa"
+    beta_file = data_dir + "fasta/beta_chains.fa"
 
     alpha_sequences = load_sequences(alpha_file)
     beta_sequences = load_sequences(beta_file)
     alpha_annotation = parse_igblast(alpha_igblast)
     beta_annotation = parse_igblast(beta_igblast)
-    find_cdr3_stop(alpha_sequences, alpha_annotation)
-    find_cdr3_stop(beta_sequences, beta_annotation)
+    alpha_annotation = find_cdr3_stop(alpha_sequences, alpha_annotation)
+    beta_annotation = find_cdr3_stop(beta_sequences, beta_annotation)
+    alpha_cdrs = extract_features(alpha_sequences, alpha_annotation)
+    beta_cdrs = extract_features(beta_sequences, beta_annotation)
+    write_cdrs(alpha_cdrs, data_dir + "fasta/alpha_cdrs.fa")
+    write_cdrs(beta_cdrs, data_dir + "fasta/beta_cdrs.fa")
+
 
     
 

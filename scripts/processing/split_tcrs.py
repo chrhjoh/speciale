@@ -27,14 +27,14 @@ def split_tcrs(sequences : dict, anno : dict):
 
 def main():
     data_dir = "data/"
-    seq_file = data_dir + "concat_tcrs.fa"
-    hmm_file = data_dir + "hmm_alpha.txt"
+    seq_file = data_dir + "fasta/concat_tcrs.fa"
+    hmm_file = data_dir + "hmm/hmm_alpha.txt"
     sequences = load_sequences(seq_file)
     anno = parse_hmm(hmm_file)
     alphas, betas = split_tcrs(sequences, anno)
 
-    write_fasta(alphas, data_dir + "alpha_chains.fa")
-    write_fasta(betas, data_dir + "beta_chains.fa")
+    write_fasta(alphas, data_dir + "fasta/alpha_chains.fa")
+    write_fasta(betas, data_dir + "fasta/beta_chains.fa")
     
 
 if __name__ == "__main__":
