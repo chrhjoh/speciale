@@ -1,34 +1,11 @@
 import numpy as np
-import pandas as pd
+from functions import reverse_one_hot
 
 
 
 def load_data(files):
     return [np.load(file)["arr_0"] for file in files]
 
-def reverseOneHot(encoding):
-    """
-    Converts one-hot encoded array back to string sequence
-    """
-    mapping = dict(zip(range(20), "ACDEFGHIKLMNPQRSTVWY"))
-    seq = ""
-    for i in range(len(encoding)):
-        if np.max(encoding[i]) > 0:
-            seq += mapping[np.argmax(encoding[i])]
-    return seq
-
-
-def reverse_one_hot(arr, start_idx, stop_idx):
-    sequences = []
-    mapping = dict(zip(range(20), "ACDEFGHIKLMNPQRSTVWY"))
-    for encoding in arr:
-        seq = ""
-        for pos in range(start_idx, stop_idx):
-            if np.any((encoding[pos] == 1)):
-                seq += mapping[np.argmax(encoding[pos])]
-
-        sequences.append(seq)
-    return sequences
 
 
 def write_fasta(sequences, filename, header_prefix, mode="w"):
@@ -55,10 +32,11 @@ def main():
     partitions = load_data(input_files)
     targets = load_data(target_files)
 
-
     for i, partition in enumerate(partitions, 1):
-        partition = partition[:,:,:20]
-        sequences = reverse_one_hot(partition, start_idx, stop_idx)
+        partition = partition[:,:,:20]  # Only take sequence
+        sequences = []
+        for arr in partition:
+            sequences.append(reverse_one_hot(arr, start_idx, stop_idx))
         write_fasta(sequences, data_path+f"fasta/concat_tcrs.fa", f"P{i}_tcr_seq_", "a")
 
     write_targets(targets, data_path + "targets.txt")
