@@ -2,30 +2,38 @@ import numpy as np
 import torch
 import random
 import matplotlib.pyplot as plt
-from typing import Tuple
 from torch import nn
 from torch.utils.data.dataloader import DataLoader
+from torch.utils.data.dataset import Dataset
 from sklearn import metrics
 
 
-
-def load_data(path : str, partitions, batch_size: int, seq_idx:np.ndarray=np.arange(420), shuffle=True) -> Tuple[DataLoader, np.ndarray] :
-    if isinstance(partitions, int):
-        data = np.load(path + f"P{partitions}_input.npz")["arr_0"]
-        targets = np.load(path + f"P{partitions}_labels.npz")["arr_0"]
-    
-    else:
-        data = np.concatenate([np.load(path + f"P{partition}_input.npz")["arr_0"] for partition in partitions])
-        targets = np.concatenate([np.load(path + f"P{partition}_labels.npz")["arr_0"] for partition in partitions])
+class TcrDataset(Dataset):
+    def __init__(self, data_file, label_file):
+        self.data = np.transpose(np.load(data_file)["arr_0"],(1,2))
+        self.labels = np.load(label_file)["arr_0"]
         
-    if shuffle:
-        idxs = np.random.permutation(data.shape[0])
-        data = data[idxs, :, :] # Permute observations
-        targets = targets[idxs]
-    data = data[:,seq_idx, :] # Subset sequences
-    data_list = [[np.transpose(data[i]), targets[i]] for i in range(len(data))]
+    def __len__(self):
+        return len(self.labels)
 
-    return DataLoader(data_list, batch_size,), data, targets
+    def __getitem__(self, index):
+        return self.data[index], self.labels[index]
+    
+    def shuffle_data(self):
+        idx = np.random.permutation(self.data.shape[0])
+        self.data = self.data[idx, : , :]
+        self.labels = self.labels[idx]
+    
+    def slice_data(self, idx):
+        self.data = self.data[:,idx,:]
+    
+    def add_partition(self, data_file, label_file):
+        data = np.transpose(np.load(data_file)["arr_0"],(0,2,1))
+        labels =  np.load(label_file)["arr_0"]
+        self.data = np.concatenate([self.data, data])
+        self.labels = np.concatenate([self.labels, labels])
+
+
 
 class Runner:
 

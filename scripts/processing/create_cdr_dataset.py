@@ -20,17 +20,31 @@ def find_tcr_b_idx(seq, anno):
     idx = seq.find(match)
     return idx + len(match)
 
-#TODO: Find a way to introduce padding into numpy arrays, so all arrays in the list has same length
-# Put back all CDRs and pad zeroes so all CDRs start at same position
-# Zeroes should also be padded in energy terms
-# Then stack on the length so one array per sequence
-# After that divide into partitions, and stack those partitions
-# Write the new numpy arrays out
+def find_pad_length(arrs, axis=0):
+    pad_len = 0
+    for arr, _ in arrs:
+        if arr.shape[axis] > pad_len:
+            pad_len = arr.shape[axis]
+
+    return pad_len
+
+
+def pad_array(arr, pad_length):
+    """
+    Pad an array so that the sequence dimension will have length pad_length
+    """
+    pad_amount = pad_length - arr.shape[0]
+    
+    assert pad_amount >= 0, "Pad amount should be non negative"
+    if pad_amount > 0:
+        pad_arr = np.zeros((pad_amount, arr.shape[1]))
+        arr = np.concatenate([arr, pad_arr])
+    return arr
 
 
 def main():
     data_dir = "data/"
-    input_files = [data_dir+f"hackathon_data/P{i}_input.npz" for i in range(1,6)]
+    input_files = [data_dir+f"datasets/P{i}_input.npz" for i in range(1,6)]
     hmm_file = data_dir+"hmm/hmm_alpha.txt"
     igblast_file_a = data_dir+"igblast/alpha_igblast.txt"
     igblast_file_b = data_dir+"igblast/beta_igblast.txt"
@@ -55,28 +69,38 @@ def main():
             cdr_anno_b[id] = find_cdr3_stop(seq[tcr_b_start:],cdr_anno_b[id])
             
             # Append the arrays with energy terms, so they can be included when reconstructing
-            arr_dict["mhc_pep"].append((arr[:188],i))
+            arr_dict["mhc_pep"].append([arr[:188],i])
             # idx works by tcr start + cdr start - 1 to tcr start + cdr end (-1 is because of igblast vs python indexing)
             # i indicates what partition to redistribute the array to after padding
-            arr_dict["cdr1_a"].append((arr[tcr_a_start+cdr_anno_a[id]["CDR1-start"]-1:tcr_a_start+cdr_anno_a[id]["CDR1-stop"]],i))
-            arr_dict["cdr2_a"].append((arr[tcr_a_start+cdr_anno_a[id]["CDR2-start"]-1:tcr_a_start+cdr_anno_a[id]["CDR2-stop"]],i))
-            arr_dict["cdr3_a"].append((arr[tcr_a_start+cdr_anno_a[id]["CDR3-start"]-1:tcr_a_start+cdr_anno_a[id]["CDR3-stop"]],i))
-            arr_dict["cdr1_b"].append((arr[tcr_b_start+cdr_anno_b[id]["CDR1-start"]-1:tcr_b_start+cdr_anno_b[id]["CDR1-stop"]],i))
-            arr_dict["cdr2_b"].append((arr[tcr_b_start+cdr_anno_b[id]["CDR2-start"]-1:tcr_b_start+cdr_anno_b[id]["CDR2-stop"]],i))
-            arr_dict["cdr3_b"].append((arr[tcr_b_start+cdr_anno_b[id]["CDR3-start"]-1:tcr_b_start+cdr_anno_b[id]["CDR3-stop"]],i))
+            arr_dict["cdr1_a"].append([arr[tcr_a_start+cdr_anno_a[id]["CDR1-start"]-1:tcr_a_start+cdr_anno_a[id]["CDR1-stop"]],i])
+            arr_dict["cdr2_a"].append([arr[tcr_a_start+cdr_anno_a[id]["CDR2-start"]-1:tcr_a_start+cdr_anno_a[id]["CDR2-stop"]],i])
+            arr_dict["cdr3_a"].append([arr[tcr_a_start+cdr_anno_a[id]["CDR3-start"]-1:tcr_a_start+cdr_anno_a[id]["CDR3-stop"]],i])
+            arr_dict["cdr1_b"].append([arr[tcr_b_start+cdr_anno_b[id]["CDR1-start"]-1:tcr_b_start+cdr_anno_b[id]["CDR1-stop"]],i])
+            arr_dict["cdr2_b"].append([arr[tcr_b_start+cdr_anno_b[id]["CDR2-start"]-1:tcr_b_start+cdr_anno_b[id]["CDR2-stop"]],i])
+            arr_dict["cdr3_b"].append([arr[tcr_b_start+cdr_anno_b[id]["CDR3-start"]-1:tcr_b_start+cdr_anno_b[id]["CDR3-stop"]],i])
     
-    pad_lengths = []
-    for feat in arr_dict:
-        pad_len = 0
-        for arr, _ in arr_dict[feat]:
-            if arr.shape[0] > pad_len:
-                pad_len = arr.shape[0]
+    pad_lengths = [find_pad_length(arr_dict[feat]) for feat in arr_dict ]
 
-        pad_lengths.append(pad_len)
-        
+    for i, feat in enumerate(arr_dict):
+        for j, arr in enumerate(arr_dict[feat]):
+            arr_dict[feat][j][0] = pad_array(arr[0], pad_lengths[i])
 
+    partitions = [[], [], [], [] ,[]]
+    for i in range(len(arr_dict["mhc_pep"])): # Just loop through any of the features
+        # concatenate arrays corresponding to one observation
+        arr_list = [arr_dict["mhc_pep"][i][0], arr_dict["cdr1_a"][i][0], arr_dict["cdr2_a"][i][0],
+                    arr_dict["cdr3_a"][i][0], arr_dict["cdr1_b"][i][0], arr_dict["cdr2_b"][i][0],
+                    arr_dict["cdr3_b"][i][0]]
+        padded_arr = np.concatenate(arr_list)
+        partitions[arr_dict["mhc_pep"][i][1]-1].append(padded_arr) 
 
-
+    # stack arrays for each observation
+    for i, partition in enumerate(partitions,1):
+        np.stack(partition)
+        np.savez(data_dir+f"datasets/P{i}_input_cdrs", partition)
+    print("Indexes for different features")
+    print("MHC_pep", "cdr1_a",  "cdr2_a",  "cdr3_a",  "cdr1_b",  "cdr2_b",  "cdr3_b", sep="\t")
+    print(*pad_lengths,sep="\t")
 
 if __name__ == "__main__":
     main()

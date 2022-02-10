@@ -6,15 +6,16 @@ awk '/^>/ {printf("%s%s\t",(N>0?"\n":""),$0);N++;next;} {printf("%s",$0);} END {
 
 awk '/^>/ {printf("%s%s\t",(N>0?"\n":""),$0);N++;next;} {printf("%s",$0);} END {printf("\n");}' $2 > tmp/beta.txt
 
+awk '/^>/ {printf("%s%s\t",(N>0?"\n":""),$0);N++;next;} {printf("%s",$0);} END {printf("\n");}' $3 > tmp/peptide.txt
 
 # If whole TCR
-# alpha = $4
-# beta = $6
+# alpha = $6
+# beta = $8
 
 # If CDRs
-# alpha = $4$5$6
-# beta = $8$9$10
+# alpha = $6$7$8
+# beta = $10$11$12
 
-paste $3 tmp/alpha.txt tmp/beta.txt | awk '{print $1 "\t" $6 "\t" $10 "\t" $2}'
+paste $4 tmp/peptide.txt tmp/alpha.txt tmp/beta.txt | awk '{print $1 "\t" $4 "\t" $8 "\t" $12 "\t" $2}'
 
 rm -r tmp
