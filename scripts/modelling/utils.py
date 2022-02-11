@@ -10,7 +10,7 @@ from sklearn import metrics
 
 class TcrDataset(Dataset):
     def __init__(self, data_file, label_file):
-        self.data = np.transpose(np.load(data_file)["arr_0"],(1,2))
+        self.data = np.transpose(np.load(data_file)["arr_0"],(0,2,1))
         self.labels = np.load(label_file)["arr_0"]
         
     def __len__(self):
@@ -25,7 +25,7 @@ class TcrDataset(Dataset):
         self.labels = self.labels[idx]
     
     def slice_data(self, idx):
-        self.data = self.data[:,idx,:]
+        self.data = self.data[:,:,idx]
     
     def add_partition(self, data_file, label_file):
         data = np.transpose(np.load(data_file)["arr_0"],(0,2,1))
