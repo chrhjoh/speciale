@@ -279,3 +279,88 @@ class Test(nn.Module):
         x = self.heavy_drop(x)
         x = torch.sigmoid(self.dense3(x))
         return x
+
+class SimpleCNN(nn.Module):
+    def __init__(self,
+                local_features,
+                global_features,
+                use_global_features,
+                input_length,
+                cnn_one_channel = 100,
+                cnn_kernel_size = 5,
+                cnn_stride = 1,
+                cnn_padding = 2,
+                dense_neurons = 1,
+                dropout = 0.):
+
+        super(SimpleCNN, self).__init__()  
+
+        # Assign which features to use
+        self.input_length = input_length
+        self.local_features = local_features
+        self.n_local_feat = len(local_features)
+        if use_global_features: 
+            self.global_features = global_features
+            self.n_global_feat = len(global_features)
+            
+        self.use_global_features = use_global_features
+        
+        # Convolutional Layers
+        self.conv1 = nn.Conv1d(in_channels  = self.n_local_feat,
+                               out_channels = cnn_one_channel,
+                               kernel_size  = cnn_kernel_size,
+                               stride       = cnn_stride,
+                               padding      = cnn_padding)
+
+        self.conv1_len = int(((self.input_length -  cnn_kernel_size +2 *cnn_padding)/cnn_stride)+1)
+        # Pooling layer
+        self.pool = nn.MaxPool1d(kernel_size=self.conv1_len,
+                                 stride=1)
+
+        # Dense layers
+        if self.use_global_features:
+            self.dense1 = nn.Linear(cnn_one_channel + self.n_global_feat, dense_neurons)
+        else:
+            self.dense1 = nn.Linear(cnn_one_channel, dense_neurons)       
+
+        # Batch normalization
+        self.bn_start = nn.BatchNorm1d(self.n_local_feat)
+        self.bn_cnn1 = nn.BatchNorm1d(cnn_one_channel)
+
+        if self.use_global_features:
+            self.bn_dense = nn.BatchNorm1d(cnn_one_channel + self.n_global_feat)
+        else:
+            self.bn_dense = nn.BatchNorm1d(cnn_one_channel)
+
+        # Dropout
+        self.drop = nn.Dropout(p = dropout)
+
+        
+        # Init weights
+        init.kaiming_uniform_(self.conv1.weight)
+        init.kaiming_uniform_(self.dense1.weight)
+
+
+    def forward(self, x):
+        # global features are the same for the whole sequence -> take first value
+        if self.use_global_features:
+            global_features = x[:, self.global_features, 0]
+
+        local_features = x[:, self.local_features, :]
+        x = self.bn_start(local_features)
+
+        # Convolutional 1
+        x = F.relu(self.conv1(x))
+        x = self.pool(x)
+        x = torch.flatten(x, 1)
+        x = self.bn_cnn1(x)
+        x = self.drop(x)
+
+        if self.use_global_features:
+            x = torch.cat((x, global_features), dim=1) # add global features
+        
+        # Dense
+        x = self.drop(x)
+        x = self.bn_dense(x)
+        x = torch.sigmoid(self.dense1(x))
+        return x
