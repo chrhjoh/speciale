@@ -3,6 +3,12 @@ import torch.nn.functional as F
 import torch
 from torch.nn import init
 
+def maxpool_length(length, kernel_size, stride=1, padding=0, dilation=1):
+    return int((length + 2 * padding - dilation * (kernel_size - 1) - 1) / stride + 1)
+
+def conv_length(length, kernel_size, stride=1, padding=0, dilation=1):
+    return int((length + 2 * padding - dilation * (kernel_size - 1) - 1) // stride + 1)
+
 class Net(nn.Module):
     def __init__(self,
                 local_features,
@@ -290,8 +296,9 @@ class SimpleCNN(nn.Module):
                 cnn_kernel_size = 5,
                 cnn_stride = 1,
                 cnn_padding = 2,
+                pool_stride = 2,
                 dense_neurons = 1,
-                dropout = 0.):
+                dropout = 0.3):
 
         super(SimpleCNN, self).__init__()  
 
@@ -312,10 +319,12 @@ class SimpleCNN(nn.Module):
                                stride       = cnn_stride,
                                padding      = cnn_padding)
 
-        self.conv1_len = int(((self.input_length -  cnn_kernel_size +2 *cnn_padding)/cnn_stride)+1)
+        # Length calculations
+        conv1_len = conv_length(input_length, cnn_kernel_size, cnn_stride, cnn_padding)
+
         # Pooling layer
-        self.pool = nn.MaxPool1d(kernel_size=self.conv1_len,
-                                 stride=1)
+        self.pool1 = nn.MaxPool1d(kernel_size=conv1_len,
+                                 stride=pool_stride)
 
         # Dense layers
         if self.use_global_features:
@@ -347,20 +356,25 @@ class SimpleCNN(nn.Module):
             global_features = x[:, self.global_features, 0]
 
         local_features = x[:, self.local_features, :]
-        x = self.bn_start(local_features)
 
-        # Convolutional 1
-        x = F.relu(self.conv1(x))
-        x = self.pool(x)
-        x = torch.flatten(x, 1)
-        x = self.bn_cnn1(x)
+        x = self.bn_start(local_features)
         x = self.drop(x)
 
+        # Convolutional 1
+        x = self.conv1(x)
+        x = self.drop(x)
+        x = F.relu(x)
+        x = self.pool1(x)
+        x = self.bn_cnn1(x)
+
+        x = torch.flatten(x, 1)
+        
         if self.use_global_features:
+            global_features = self.drop(global_features)
             x = torch.cat((x, global_features), dim=1) # add global features
         
         # Dense
-        x = self.drop(x)
         x = self.bn_dense(x)
+        
         x = torch.sigmoid(self.dense1(x))
         return x

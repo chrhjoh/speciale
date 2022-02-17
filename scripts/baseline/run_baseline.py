@@ -25,6 +25,7 @@ def main():
                                f"tmp/P{i}_{peptide}_test",
                                f"tmp/P{i}_{peptide}_db"])
 
+                test_pep.to_csv("results/baseline/peptide_labels2.txt", columns=["peptide"], index=False, header=None, mode="a")
 
         
 
