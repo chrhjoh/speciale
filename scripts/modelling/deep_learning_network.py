@@ -3,11 +3,8 @@ import torch.nn.functional as F
 import torch
 from torch.nn import init
 
-def maxpool_length(length, kernel_size, stride=1, padding=0, dilation=1):
-    return int((length + 2 * padding - dilation * (kernel_size - 1) - 1) / stride + 1)
-
 def conv_length(length, kernel_size, stride=1, padding=0, dilation=1):
-    return int((length + 2 * padding - dilation * (kernel_size - 1) - 1) // stride + 1)
+    return int((length + 2 * padding - dilation * (kernel_size - 1) - 1) / stride + 1)
 
 class Net(nn.Module):
     def __init__(self,
@@ -286,7 +283,7 @@ class Test(nn.Module):
         x = torch.sigmoid(self.dense3(x))
         return x
 
-class SimpleCNN(nn.Module):
+class SingleCNN(nn.Module):
     def __init__(self,
                 local_features,
                 global_features,
@@ -300,7 +297,7 @@ class SimpleCNN(nn.Module):
                 dense_neurons = 1,
                 dropout = 0.3):
 
-        super(SimpleCNN, self).__init__()  
+        super(SingleCNN, self).__init__()  
 
         # Assign which features to use
         self.input_length = input_length
