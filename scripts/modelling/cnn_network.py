@@ -18,7 +18,7 @@ class SimpleCNN(nn.Module):
                 cnn_channels = 30,
                 cnn_kernel_size = 3,
                 cnn_stride = 1,
-                cnn_padding = 1,
+                cnn_padding = "same",
                 dense_neurons = 64,
                 dropout = 0.3):
 
@@ -95,6 +95,7 @@ class SimpleCNN(nn.Module):
 
         # Max pooling
         self.max_pool = nn.AdaptiveMaxPool1d(1)
+    
 
         # Dense layers
         n_convs = 7
@@ -105,6 +106,9 @@ class SimpleCNN(nn.Module):
         
         self.dense_out = nn.Linear(dense_neurons, 1)
 
+        # Dropout
+        self.dropout = nn.Dropout(dropout)
+
         # Batchnorm before dense
         if self.use_global_features:
             self.bn_dense = nn.BatchNorm1d(cnn_channels * n_convs + self.n_global_feat)
@@ -114,21 +118,24 @@ class SimpleCNN(nn.Module):
 
 
         # Init weights
-        init.kaiming_uniform_(self.cdr1a_conv.weight)
-        init.kaiming_uniform_(self.cdr2a_conv.weight)
-        init.kaiming_uniform_(self.cdr3a_conv.weight)
+        init.kaiming_normal_(self.cdr1a_conv.weight)
+        init.kaiming_normal_(self.cdr2a_conv.weight)
+        init.kaiming_normal_(self.cdr3a_conv.weight)
 
-        init.kaiming_uniform_(self.cdr1b_conv.weight)
-        init.kaiming_uniform_(self.cdr2b_conv.weight)
-        init.kaiming_uniform_(self.cdr3b_conv.weight)
+        init.kaiming_normal_(self.cdr1b_conv.weight)
+        init.kaiming_normal_(self.cdr2b_conv.weight)
+        init.kaiming_normal_(self.cdr3b_conv.weight)
 
-        init.kaiming_uniform_(self.pep_conv.weight)
+        init.kaiming_normal_(self.pep_conv.weight)
 
-        init.kaiming_uniform_(self.dense1.weight)
-        init.kaiming_uniform_(self.dense_out.weight)
+        init.kaiming_normal_(self.dense1.weight)
+        init.kaiming_normal_(self.dense_out.weight)
 
 
     def forward(self, x):
+        # Initial dropout
+        x = self.dropout(x)
+        
         # global features are the same for the whole sequence -> take first value
         if self.use_global_features:
             global_features = x[:, self.global_features, 0]
@@ -165,7 +172,9 @@ class SimpleCNN(nn.Module):
             x = torch.cat((x, global_features), dim=1) # add global features
         
         x = self.bn_dense(x)
+        x = self.dropout(x)
         # Dense
         x = torch.tanh(self.dense1(x))
+        x = self.dropout(x)
         x = torch.sigmoid(self.dense_out(x))
         return x
