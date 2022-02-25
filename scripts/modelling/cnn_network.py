@@ -95,6 +95,8 @@ class SimpleCNN(nn.Module):
 
         # Max pooling
         self.max_pool = nn.AdaptiveMaxPool1d(1)
+        self.max_pool_index = nn.AdaptiveMaxPool1d(1, return_indices=True)
+        self.return_pool = False
     
 
         # Dense layers
@@ -115,7 +117,7 @@ class SimpleCNN(nn.Module):
         else:
             self.bn_dense = nn.BatchNorm1d(cnn_channels * n_convs) 
         
-
+        self.bn_start = nn.BatchNorm1d(self.n_local_feat)
 
         # Init weights
         init.kaiming_normal_(self.cdr1a_conv.weight)
@@ -135,13 +137,13 @@ class SimpleCNN(nn.Module):
     def forward(self, x):
         # Initial dropout
         x = self.dropout(x)
-        
         # global features are the same for the whole sequence -> take first value
         if self.use_global_features:
             global_features = x[:, self.global_features, 0]
 
         # Get all local features divided
         local_features = x[:, self.local_features, :]
+        x = self.bn_start(local_features)
 
         pep = local_features[:, :, self.pep]
         
@@ -153,16 +155,29 @@ class SimpleCNN(nn.Module):
         cdr2b = local_features[:, :, self.cdr2b]
         cdr3b = local_features[:, :, self.cdr3b]
         
+        
+
         # Do all the convolutions and poolings
-
-        pep_pool = self.max_pool(torch.tanh(self.cdr1a_conv(pep)))
         cdr1a_pool = self.max_pool(torch.tanh(self.cdr1a_conv(cdr1a)))
-        cdr2a_pool = self.max_pool(torch.tanh(self.cdr1a_conv(cdr2a)))
-        cdr3a_pool = self.max_pool(torch.tanh(self.cdr1a_conv(cdr3a)))
+        cdr2a_pool = self.max_pool(torch.tanh(self.cdr2a_conv(cdr2a)))
+        cdr3a_pool = self.max_pool(torch.tanh(self.cdr3a_conv(cdr3a)))
 
-        cdr1b_pool = self.max_pool(torch.tanh(self.cdr1a_conv(cdr1b)))
-        cdr2b_pool = self.max_pool(torch.tanh(self.cdr1a_conv(cdr2b)))
-        cdr3b_pool = self.max_pool(torch.tanh(self.cdr1a_conv(cdr3b)))
+        cdr1b_pool = self.max_pool(torch.tanh(self.cdr1b_conv(cdr1b)))
+        cdr2b_pool = self.max_pool(torch.tanh(self.cdr2b_conv(cdr2b)))
+        cdr3b_pool = self.max_pool(torch.tanh(self.cdr2b_conv(cdr3b)))
+        
+        ############## CODE FOR AVOIDING USING PADDED AREAS ##################
+        # subtract 2 from the padded peptide pool to avoid having this position ever chosen
+        pep_conv = torch.tanh(self.pep_conv(pep))
+        adjust_tensor = torch.zeros(pep_conv.shape)
+        adjust_tensor[:, :, 0] = -2
+        adjust_tensor[:, :, -1] = -2
+        pep_conv = pep_conv + adjust_tensor
+
+        pep_pool = self.max_pool(pep_conv)
+        if self.return_pool:
+            return self.max_pool_index(pep_conv), self.max_pool(torch.tanh(self.cdr2b_conv(cdr3b)))
+        ############################################
 
         # Combine convolutions
         x = torch.cat((pep_pool, cdr1a_pool, cdr2a_pool, cdr3a_pool, cdr1b_pool, cdr2b_pool, cdr3b_pool), dim=1)

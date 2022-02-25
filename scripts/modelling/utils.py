@@ -6,6 +6,7 @@ from torch import nn
 from torch.utils.data.dataloader import DataLoader
 from torch.utils.data.dataset import Dataset
 from sklearn import metrics
+import pickle
 
 
 class TcrDataset(Dataset):
@@ -33,7 +34,40 @@ class TcrDataset(Dataset):
         self.data = np.concatenate([self.data, data])
         self.labels = np.concatenate([self.labels, labels])
 
+    def _reverse_one_hot(self, arr):
+        mapping = dict(zip(range(20), "ACDEFGHIKLMNPQRSTVWY"))
+        seq = ""
+        for j in range(arr.shape[1]):
+            pos = arr[:, j]
+            if np.any((pos == 1)):
+                seq += mapping[np.argmax(pos)]
+            else:
+                seq += "*"
+        return seq
+    
+    def _encode(self, seq, encoding):
+        arrs = []
+        for residue in seq:
+            if residue == "*":
+                arrs.append(np.zeros(20))
+            else:
+                arrs.append(encoding[residue])
+        arrs = np.transpose(np.stack(arrs))
+        return arrs
 
+    
+    def to_blossum(self, blosum_file = "../../data/blosum/blosum.pkl"):
+        
+        # get translation dict
+        with open(blosum_file, "rb" ) as blosum_fh:
+            blosum_dict = pickle.load(blosum_fh)
+
+        # Get sequences
+        for i in range(len(self.data)):
+            arr = self.data[i, :20, :]
+            seq = self._reverse_one_hot(arr)
+            arr = self._encode(seq, blosum_dict)
+            self.data[i, :20, :] = arr
 
 class Runner:
 
@@ -142,6 +176,29 @@ class Runner:
         plt.ylim([0, 1])
         plt.ylabel("True Positive Rate")
         plt.xlabel("False Positive Rate")
+    
+    def get_pool_idxs(self):
+        self.model.return_pool = True
+        if self.mode == "Train":
+            self.model.train()
+        else:
+            self.model.eval()
+        max_output = []
+        conv_output = []
+        idxs = []
+
+        for x, _  in self.loader:
+            x = x.float().to(self.device)
+            (max_out, idx), conv_out = self.model(x)
+            max_output.append(max_out)
+            conv_output.append(conv_out)
+            idxs.extend(idx)
+
+        conv_output = torch.cat(conv_output)
+        max_output = torch.cat(max_output).flatten(1)
+        idxs = torch.cat(idxs, 1)
+        self.model.return_pool = False
+        return max_output, conv_output, idxs
 
 
 class EarlyStopping:
@@ -176,7 +233,7 @@ def setup_seed(seed):
     torch.cuda.manual_seed(seed)               
     torch.cuda.manual_seed_all(seed)           
     torch.backends.cudnn.deterministic = True  
-    
 
-    
+
+
     
