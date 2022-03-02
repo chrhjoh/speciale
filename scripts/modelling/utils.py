@@ -13,6 +13,7 @@ class TcrDataset(Dataset):
     def __init__(self, data_file, label_file):
         self.data = np.transpose(np.load(data_file)["arr_0"],(0,2,1))
         self.labels = np.load(label_file)["arr_0"]
+        self.is_reduced = False
         
     def __len__(self):
         return len(self.labels)
@@ -25,7 +26,7 @@ class TcrDataset(Dataset):
         self.data = self.data[idx, : , :]
         self.labels = self.labels[idx]
     
-    def slice_data(self, idx):
+    def slice_sequences(self, idx):
         self.data = self.data[:,:,idx]
     
     def add_partition(self, data_file, label_file):
@@ -54,8 +55,16 @@ class TcrDataset(Dataset):
                 arrs.append(encoding[residue])
         arrs = np.transpose(np.stack(arrs))
         return arrs
-
     
+    def subset_datapoints(self, idxs):
+        if not self.is_reduced:
+            self.total_data = self.data.copy()
+            self.total_labels = self.labels.copy()
+
+        self.data = self.total_data[idxs]
+        self.labels = self.total_labels[idxs]
+        self.is_reduced = True
+
     def to_blossum(self, blosum_file = "../../data/blosum/blosum.pkl"):
         
         # get translation dict
@@ -177,28 +186,25 @@ class Runner:
         plt.ylabel("True Positive Rate")
         plt.xlabel("False Positive Rate")
     
-    def get_pool_idxs(self):
-        self.model.return_pool = True
+    def get_pool_idxs(self, feat):
+        self.model.return_pool = feat
         if self.mode == "Train":
             self.model.train()
         else:
             self.model.eval()
         max_output = []
-        conv_output = []
         idxs = []
 
         for x, _  in self.loader:
             x = x.float().to(self.device)
-            (max_out, idx), conv_out = self.model(x)
+            (max_out, idx) = self.model(x)
             max_output.append(max_out)
-            conv_output.append(conv_out)
             idxs.extend(idx)
 
-        conv_output = torch.cat(conv_output)
         max_output = torch.cat(max_output).flatten(1)
         idxs = torch.cat(idxs, 1)
         self.model.return_pool = False
-        return max_output, conv_output, idxs
+        return max_output, idxs
 
 
 class EarlyStopping:
