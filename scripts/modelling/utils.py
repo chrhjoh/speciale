@@ -194,14 +194,17 @@ class Runner:
             self.model.eval()
         max_output = []
         idxs = []
+        conv_out = []
 
         for x, _  in self.loader:
             x = x.float().to(self.device)
-            (max_out, idx) = self.model(x)
+            (max_out, idx), conv = self.model(x)
             max_output.append(max_out)
             idxs.extend(idx)
+            conv_out.append(conv)
 
         max_output = torch.cat(max_output).flatten(1)
+        conv_out = torch.cat(conv_out)
         idxs = torch.cat(idxs, 1)
         self.model.return_pool = False
         return max_output, idxs
