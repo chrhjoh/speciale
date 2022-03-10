@@ -2,6 +2,9 @@ import torch
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
+import pandas as pd
+import os
+import pickle
 from torch import nn, optim, cuda
 from torch.utils.data.dataloader import DataLoader
 from utils import Runner, EarlyStopping, TcrDataset, setup_seed
@@ -10,89 +13,76 @@ from cdr_network import CdrCNN
 custom_params = {"axes.spines.right": False, "axes.spines.top": False}
 sns.set_theme(style="ticks", rc=custom_params, palette="pastel")
 
+def read_data(filename):
+    df = pd.read_csv(filename, index_col=0)
+    return df
+
 def main():
-    data_dir = "data/"
-    data_files = [data_dir+f"datasets/P{i}_input_cdrs.npz" for i in range(1,6)]
-    label_files = [data_dir+f"datasets/P{i}_labels.npz" for i in range(1,6)]
+
+    ############ PARAMETERS ##############
+    DATA_DIR = "data/"
+    DATA_FILE = os.path.join(DATA_DIR, "datasets/train_data_85neg_90pos.csv")
     model_name = "cdr_model.pt"
     model_path = "scripts/modelling/stored_models/"
+    ENCODING_FILE = os.path.join(DATA_DIR, "blosum/blosum.pkl")
+
+    # Data parameters
+    train_partition = [1,2,3]
+    val_partition = [4]
+    test_partition = [5]
+
+    sequences = ["pep", 
+                 "cdr1a", "cdr2a", "cdr3a",
+                 "cdr1b", "cdr2b", "cdr3b"]
+
+    local_features = np.arange(20)
+    global_features = None
+    use_global_features = False
 
     # Loader parameters
     batch_size = 64
     seed= 42
 
     # Hyperparameters
-    epochs = 100
+    epochs = 300
     patience = 20
     lr = 0.005
     weight_decay = 0.0005
 
     # Layer parameters
-    cnn_channels = 20
+    cnn_channels = 30
     hidden_neurons = 64
-    dropout = 0.4
+    dropout = 0.3
     cnn_kernel = 3
 
+    ################ Load Data ####################
     setup_seed(seed)
     device = torch.device("cuda" if cuda.is_available() else "cpu")
     print("Using device:", device)
-    
-    ########### Select Indexes CDR Data ############
 
-    # Full model
-    # idx = np.arange(248)
+    # Load encoding
+    with open(ENCODING_FILE, "rb" ) as fh:
+            encoding = pickle.load(fh)
 
-    # Peptide + All CDRS
-    idx = np.arange(179,248)
-
-    ########### Select Features ###########
-
-    # All features
-    #local_features = np.arange(27)
-    #global_features = np.arange(27, 54)
-    #use_global_features = True
-
-    # Sequence
-    local_features = np.arange(20)
-    global_features = None
-    use_global_features = False
-
-    # Energy terms
-    #local_features = np.arange(20, 27)
-    #global_features = np.arange(27, 54)
-    #use_global_features = True
-
-    # Sequence and global energy
-    #local_features = np.arange(20)
-    #global_features = np.arange(27, 54)
-    #use_global_features = True
-
-    # Load data partitions
-    train_data = TcrDataset(data_files[0], label_files[0])
-    train_data.add_partition(data_files[1], label_files[1])
-    train_data.add_partition(data_files[2], label_files[2])
-    val_data = TcrDataset(data_files[3], label_files[3])
-    test_data = TcrDataset(data_files[4], label_files[4])
-
-
+    data = read_data(DATA_FILE)
+    train_data = TcrDataset(data, train_partition)
+    val_data = TcrDataset(data, val_partition)
+    test_data = TcrDataset(data, test_partition)
     # Shuffle data randomly is needed
+    
+    train_data.add_sequence_features(sequences, encoding)
+    val_data.add_sequence_features(sequences, encoding)
+    test_data.add_sequence_features(sequences, encoding)
+
     train_data.shuffle_data()
     val_data.shuffle_data()
     test_data.shuffle_data()
-
-    # slicing sequence dimension
-    train_data.slice_sequences(idx)
-    val_data.slice_sequences(idx)
-    test_data.slice_sequences(idx)
-
-    train_data.to_blossum("data/blosum/blosum.pkl")
-    val_data.to_blossum("data/blosum/blosum.pkl")
-    test_data.to_blossum("data/blosum/blosum.pkl")
 
     train_dl = DataLoader(train_data, batch_size)
     val_dl = DataLoader(val_data, batch_size)
     test_dl = DataLoader(test_data, batch_size)
 
+    ############### DEFINE NETWORK ################
     # Define loss and optimizer
     criterion = nn.BCELoss(reduction='none')
     loss_weight = sum(train_data.labels) / len(train_data.labels)
@@ -106,7 +96,7 @@ def main():
         weight_decay=weight_decay,
         amsgrad=True
     )
-
+    ############# TRAIN ################
     # Define runners
     train_runner = Runner(train_dl, net, criterion, loss_weight, device, optimizer)
     val_runner = Runner(val_dl, net, criterion, loss_weight, device)
@@ -134,6 +124,7 @@ def main():
         if stopper.stop:
             break
 
+    ################ EVALUATE ##################
     # Plots of training epochs
     epoch = np.arange(1, len(train_loss) + 1)
     plt.figure()
@@ -171,17 +162,19 @@ def main():
     print("Evaluation on Training Data:")
     train_runner.evaluate_model()
     plt.title("Training Data")
+    plt.show()
 
     print("Evaluation on Validation Data:")
     val_runner.evaluate_model()
     plt.title("Evaluation Data")
+    plt.show()
 
     print("Evaluation on Test Data:")
     test_runner.evaluate_model()
     plt.title("Test Data")
+    plt.show()
 
     print("Final model saved at:", model_path+model_name)
-
 
 if __name__ == "__main__":
     main()

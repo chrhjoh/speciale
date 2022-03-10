@@ -33,17 +33,20 @@ def write_fasta(sequences, filename):
             for j in range(0, len(sequences[id]), 60):
                 fh.write(sequences[id][j:j+60]+"\n")
 
-def reverse_one_hot(arr, start_idx=0, stop_idx=420, pad=""):
+def reverse_one_hot(arr, pad=""):
     """
     Takes a one hot encoding and reverses it to an amino acid string
     If the padding is needed it can be gotten through the pad parameter
     """
     mapping = dict(zip(range(20), "ACDEFGHIKLMNPQRSTVWY"))
     seq = ""
-    for pos in range(start_idx, stop_idx):
+    for pos in range(len(arr)):
         if np.any((arr[pos] == 1)):
             seq += mapping[np.argmax(arr[pos])]
         else:
             seq += pad
 
     return seq
+import pandas as pd
+
+pd.read_csv("data/datasets/train_data_85neg_90pos.csv")

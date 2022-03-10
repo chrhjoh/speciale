@@ -106,7 +106,7 @@ class CdrCNN(nn.Module):
     
 
         # Dense layers
-        n_convs = 3
+        n_convs = 7
         if self.use_global_features:
             self.dense1 = nn.Linear(cnn_channels * n_convs + self.n_global_feat, dense_neurons)
         else:
@@ -153,39 +153,40 @@ class CdrCNN(nn.Module):
 
         pep = local_features[:, :, self.pep]
         
-        #cdr1a = local_features[:, :, self.cdr1a]
-        #cdr2a = local_features[:, :, self.cdr2a]
+        cdr1a = local_features[:, :, self.cdr1a]
+        cdr2a = local_features[:, :, self.cdr2a]
         cdr3a = local_features[:, :, self.cdr3a]
 
-        #cdr1b = local_features[:, :, self.cdr1b]
-        #cdr2b = local_features[:, :, self.cdr2b]
+        cdr1b = local_features[:, :, self.cdr1b]
+        cdr2b = local_features[:, :, self.cdr2b]
         cdr3b = local_features[:, :, self.cdr3b]
         
 
         # Do all the convolutions
         pep_conved = torch.sigmoid(self.pep_conv(pep))
 
-        #cdr1a_conved = torch.sigmoid(self.cdr1a_conv(cdr1a))
-        #cdr2a_conved = torch.sigmoid(self.cdr2a_conv(cdr2a))
+        cdr1a_conved = torch.sigmoid(self.cdr1a_conv(cdr1a))
+        cdr2a_conved = torch.sigmoid(self.cdr2a_conv(cdr2a))
         cdr3a_conved = torch.sigmoid(self.cdr3a_conv(cdr3a))
 
-        #cdr1b_conved = torch.sigmoid(self.cdr1b_conv(cdr1b))
-        #cdr2b_conved = torch.sigmoid(self.cdr2b_conv(cdr2b))
+        cdr1b_conved = torch.sigmoid(self.cdr1b_conv(cdr1b))
+        cdr2b_conved = torch.sigmoid(self.cdr2b_conv(cdr2b))
         cdr3b_conved = torch.sigmoid(self.cdr3b_conv(cdr3b))
 
         # If we want to adjust for paddings. Do so here
         #pep_conved = self.adjust_padding_activation(pep_conved, pep)
         #cdr3a_conved = self.adjust_padding_activation(cdr3a_conved, cdr3a)
         #cdr3b_conved = self.adjust_padding_activation(cdr3b_conved, cdr3b)
+
         # Do all poolings
         pep_pool = self.max_pool(pep_conved)
 
-        #cdr1a_pool = self.max_pool(cdr1a_conved)
-        #cdr2a_pool = self.max_pool(cdr2a_conved)
+        cdr1a_pool = self.max_pool(cdr1a_conved)
+        cdr2a_pool = self.max_pool(cdr2a_conved)
         cdr3a_pool = self.max_pool(cdr3a_conved)
 
-        #cdr1b_pool = self.max_pool(cdr1b_conved)
-        #cdr2b_pool = self.max_pool(cdr2b_conved)
+        cdr1b_pool = self.max_pool(cdr1b_conved)
+        cdr2b_pool = self.max_pool(cdr2b_conved)
         cdr3b_pool = self.max_pool(cdr3b_conved)
         
         if self.return_pool != False:
@@ -201,7 +202,7 @@ class CdrCNN(nn.Module):
         ############################################
 
         # Combine convolutions
-        x = torch.cat((pep_pool, cdr3a_pool, cdr3b_pool), dim=1)
+        x = torch.cat((pep_pool, cdr1a_pool, cdr2a_pool, cdr3a_pool, cdr1b_pool, cdr2b_pool, cdr3b_pool), dim=1)
         x = torch.flatten(x, 1)
 
         if self.use_global_features:

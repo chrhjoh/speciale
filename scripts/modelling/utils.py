@@ -1,4 +1,5 @@
 import numpy as np
+import sys
 import torch
 import random
 import matplotlib.pyplot as plt
@@ -10,10 +11,12 @@ import pickle
 
 
 class TcrDataset(Dataset):
-    def __init__(self, data_file, label_file):
-        self.data = np.transpose(np.load(data_file)["arr_0"],(0,2,1))
-        self.labels = np.load(label_file)["arr_0"]
+    def __init__(self, df, partitions):
+        self.df = df[df["partition"].isin(partitions)]
+        self.labels = df.loc[df["partition"].isin(partitions), "label"].values
         self.is_reduced = False
+        self.data = None
+
         
     def __len__(self):
         return len(self.labels)
@@ -22,39 +25,44 @@ class TcrDataset(Dataset):
         return self.data[index], self.labels[index]
     
     def shuffle_data(self):
-        idx = np.random.permutation(self.data.shape[0])
-        self.data = self.data[idx, : , :]
-        self.labels = self.labels[idx]
-    
-    def slice_sequences(self, idx):
-        self.data = self.data[:,:,idx]
-    
-    def add_partition(self, data_file, label_file):
-        data = np.transpose(np.load(data_file)["arr_0"],(0,2,1))
-        labels =  np.load(label_file)["arr_0"]
-        self.data = np.concatenate([self.data, data])
-        self.labels = np.concatenate([self.labels, labels])
+        try:
+            idx = np.random.permutation(self.data.shape[0])
+            self.data = self.data[idx, : , :]
+            self.labels = self.labels[idx]
+            return idx
+        except AttributeError:
+            print("Could not shuffle, Data should be added first")
+            sys.exit(1)
+        
+    def add_sequence_features(self, features, encoding):
+        print("Using sequence features:", ", ".join(features))
+        data = []
+        self.lengths = []
+        for feat in features:
+            length = self.df[feat].str.len().max()
+            encoded = self.df[feat].apply(lambda seq: self.encode(seq, encoding, length))
+            data.append(np.stack(encoded.to_list()))
 
-    def _reverse_one_hot(self, arr):
-        mapping = dict(zip(range(20), "ACDEFGHIKLMNPQRSTVWY"))
-        seq = ""
-        for j in range(arr.shape[1]):
-            pos = arr[:, j]
-            if np.any((pos == 1)):
-                seq += mapping[np.argmax(pos)]
+            if len(self.lengths) == 0:
+                self.lengths.append(length)
             else:
-                seq += "*"
-        return seq
-    
-    def _encode(self, seq, encoding):
+                self.lengths.append(length + self.lengths[-1])
+        self.data = np.concatenate(data, axis=2)
+
+    def encode(self, seq, encoding, length):
         arrs = []
-        for residue in seq:
-            if residue == "*":
-                arrs.append(np.zeros(20))
+        for i in range(length):
+            if len(seq) > i:
+                arrs.append(encoding[seq[i]])
             else:
-                arrs.append(encoding[residue])
-        arrs = np.transpose(np.stack(arrs))
-        return arrs
+                arrs.append(np.zeros(20))
+        return np.transpose(np.stack(arrs))
+    
+    def add_local_energies(self):
+        return NotImplementedError
+    
+    def add_global_energies(self):
+        return NotImplementedError
     
     def subset_datapoints(self, idxs):
         if not self.is_reduced:
@@ -64,19 +72,6 @@ class TcrDataset(Dataset):
         self.data = self.total_data[idxs]
         self.labels = self.total_labels[idxs]
         self.is_reduced = True
-
-    def to_blossum(self, blosum_file = "../../data/blosum/blosum.pkl"):
-        
-        # get translation dict
-        with open(blosum_file, "rb" ) as blosum_fh:
-            blosum_dict = pickle.load(blosum_fh)
-
-        # Get sequences
-        for i in range(len(self.data)):
-            arr = self.data[i, :20, :]
-            seq = self._reverse_one_hot(arr)
-            arr = self._encode(seq, blosum_dict)
-            self.data[i, :20, :] = arr
 
 class Runner:
 
