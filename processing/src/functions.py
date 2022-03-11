@@ -47,6 +47,3 @@ def reverse_one_hot(arr, pad=""):
             seq += pad
 
     return seq
-import pandas as pd
-
-pd.read_csv("data/datasets/train_data_85neg_90pos.csv")

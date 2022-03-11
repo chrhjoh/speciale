@@ -29,8 +29,8 @@ def write_output(output, outfile):
 def main():
 
     OUT_DIR = "/Users/christianjohansen/Desktop/speciale/baseline/out"
-    RES_FILE = os.path.join(OUT_DIR, "baseline_98neg_98pos.out")
-    OUT_FILE = os.path.join(OUT_DIR, "baseline_98neg_98pos.csv")
+    RES_FILE = os.path.join(OUT_DIR, "baseline_all.out")
+    OUT_FILE = os.path.join(OUT_DIR, "baseline_all.csv")
     output = parse_kernel_output(RES_FILE)
     write_output(output, OUT_FILE)
 

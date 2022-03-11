@@ -202,7 +202,7 @@ class CdrCNN(nn.Module):
         ############################################
 
         # Combine convolutions
-        x = torch.cat((pep_pool, cdr1a_pool, cdr2a_pool, cdr3a_pool, cdr1b_pool, cdr2b_pool, cdr3b_pool), dim=1)
+        x = torch.cat((pep_pool,cdr1a_pool, cdr2a_pool,  cdr3a_pool, cdr1b_pool, cdr2b_pool, cdr3b_pool), dim=1)
         x = torch.flatten(x, 1)
 
         if self.use_global_features:

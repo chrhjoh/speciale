@@ -30,12 +30,14 @@ def main():
                  os.path.join(OUT_DIR, "baseline_90neg_90pos.csv"),
                  os.path.join(OUT_DIR, "baseline_90neg_95pos.csv"),
                  os.path.join(OUT_DIR, "baseline_95neg_95pos.csv"),
-                 os.path.join(OUT_DIR, "baseline_98neg_98pos.csv")]
+                 os.path.join(OUT_DIR, "baseline_98neg_98pos.csv"),
+                  os.path.join(OUT_DIR, "baseline_all.csv")]
     labels = ["0.85, 0.90",
               "0.9",
               "0.9, 0.95",
               "0.95",
-              "0.98"]
+              "0.98",
+              "1.0"]
 
     outputs = []
     for i, file in enumerate(res_files):

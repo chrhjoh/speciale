@@ -22,7 +22,7 @@ def main():
     ############ PARAMETERS ##############
     DIR = "/Users/christianjohansen/Desktop/speciale/modeling"
     DATA_DIR = os.path.join(DIR,"data")
-    DATA_FILE = os.path.join(DATA_DIR, "datasets/train_data_85neg_90pos.csv")
+    DATA_FILE = os.path.join(DATA_DIR, "datasets/train_data_all.csv")
     MODEL_FILE = os.path.join(DATA_DIR, "models/cdr_model.pt")
     ENCODING_FILE = os.path.join(DATA_DIR, "blosum/blosum.pkl")
 
@@ -78,7 +78,7 @@ def main():
     val_data.shuffle_data()
     test_data.shuffle_data()
 
-    train_dl = DataLoader(train_data, batch_size)
+    train_dl = DataLoader(train_data, batch_size, drop_last=True)
     val_dl = DataLoader(val_data, batch_size)
     test_dl = DataLoader(test_data, batch_size)
 
@@ -177,4 +177,4 @@ def main():
     print("Final model saved at:", MODEL_FILE)
 
 if __name__ == "__main__":
-    main()
+    main() 

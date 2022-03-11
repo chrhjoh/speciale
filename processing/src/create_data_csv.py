@@ -128,16 +128,15 @@ def mark_swapped(df : pd.DataFrame, idxs):
 
 def main():
     DIR = "/Users/christianjohansen/Desktop/speciale/"
-    DATASET_DIR = os.path.join(DIR, "modeling/data/datasets")
-    ANNOTATION_DIR = os.path.join(DIR, "processing/data")
-    PARTITION_DIR = os.path.join(DIR, "partitioning/data")
+    DATA_DIR = os.path.join(DIR, "processing/data")
+    OUT_DIR = os.path.join(DIR, "partitioning/data")
 
-    input_files = [os.path.join(DATASET_DIR, f"datasets/original_partitions/P{i}_input.npz") for i in range(1,6)]
-    label_files = [os.path.join(DATASET_DIR, f"datasets/original_partitions/P{i}_labels.npz") for i in range(1,6)]
+    input_files = [os.path.join(DATA_DIR, f"datasets/original_partitions/P{i}_input.npz") for i in range(1,6)]
+    label_files = [os.path.join(DATA_DIR, f"datasets/original_partitions/P{i}_labels.npz") for i in range(1,6)]
 
-    hmm_file = os.path.join(ANNOTATION_DIR, "hmm/hmm_alpha.txt")
-    igblast_file_a = os.path.join(ANNOTATION_DIR, "igblast/alpha_igblast.txt")
-    igblast_file_b = os.path.join(ANNOTATION_DIR, "igblast/beta_igblast.txt")
+    hmm_file = os.path.join(DATA_DIR, "hmm/hmm_alpha.txt")
+    igblast_file_a = os.path.join(DATA_DIR, "igblast/alpha_igblast.txt")
+    igblast_file_b = os.path.join(DATA_DIR, "igblast/beta_igblast.txt")
 
     data = load_arrs(input_files)
     labels = load_arrs(label_files)
@@ -196,16 +195,16 @@ def main():
     df["cdr3_len"] = df["cdr3a"].str.len() + df["cdr3b"].str.len()
     df = df.sort_values("cdr3_len", ascending=False)
 
-    df.to_csv(os.path.join(DATASET_DIR, "data_cleaned.csv"))
+    df.to_csv(os.path.join(DATA_DIR, "datasets/data_cleaned.csv"))
 
     positives = df[df["origin"] == "positive"].reset_index()
     positives.index.name = "hobohm_idx"
-    positives.to_csv(os.path.join(PARTITION_DIR, "positive_list.txt"), sep=" ", columns=["cdr3a", "cdr3b"],
+    positives.to_csv(os.path.join(OUT_DIR, "positive_list.txt"), sep=" ", columns=["cdr3a", "cdr3b"],
                      index=False, header=False)
 
     negatives = df[df["origin"] == "10x"].reset_index()
     negatives.index.name = "hobohm_idx"
-    negatives.to_csv(os.path.join(PARTITION_DIR, "negative_list.txt"), sep=" ", columns=["cdr3a", "cdr3b"],
+    negatives.to_csv(os.path.join(OUT_DIR, "negative_list.txt"), sep=" ", columns=["cdr3a", "cdr3b"],
                      index=False, header=False)
 
 if __name__ == "__main__":
