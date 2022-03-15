@@ -14,7 +14,13 @@ custom_params = {"axes.spines.right": False, "axes.spines.top": False}
 sns.set_theme(style="ticks", rc=custom_params, palette="pastel")
 
 def read_data(filename):
+    local_feat = ['fa_tot', 'fa_atr', 'fa_rep', 'fa_sol', 'fa_elec', 'fa_dun', 'p_aa_pp']
+    global_feat = ["global_interactions"]
     df = pd.read_csv(filename, index_col=0)
+    for feat in local_feat:
+        df[feat] = df[feat].apply(lambda x : x.strip("[]").split(", "))
+    for feat in global_feat:
+        df[feat] = df[feat].apply(lambda x : x.strip("[]").split(", "))
     return df
 
 def main():
@@ -22,8 +28,8 @@ def main():
     ############ PARAMETERS ##############
     DIR = "/Users/christianjohansen/Desktop/speciale/modeling"
     DATA_DIR = os.path.join(DIR,"data")
-    DATA_FILE = os.path.join(DATA_DIR, "datasets/train_data_all.csv")
-    MODEL_FILE = os.path.join(DATA_DIR, "models/cdr_model.pt")
+    DATA_FILE = os.path.join(DATA_DIR, "datasets/train_data_98neg_98pos.csv")
+    MODEL_FILE = os.path.join(DATA_DIR, "models/cdr3_model.pt")
     ENCODING_FILE = os.path.join(DATA_DIR, "blosum/blosum.pkl")
 
     # Data parameters
@@ -50,7 +56,7 @@ def main():
     weight_decay = 0.0005
 
     # Layer parameters
-    cnn_channels = 30
+    cnn_channels = 20
     hidden_neurons = 64
     dropout = 0.3
     cnn_kernel = 3
@@ -65,20 +71,16 @@ def main():
             encoding = pickle.load(fh)
 
     data = read_data(DATA_FILE)
-    train_data = TcrDataset(data, train_partition)
-    val_data = TcrDataset(data, val_partition)
-    test_data = TcrDataset(data, test_partition)
-    
-    train_data.add_sequence_features(sequences, encoding)
-    val_data.add_sequence_features(sequences, encoding)
-    test_data.add_sequence_features(sequences, encoding)
+    train_data = TcrDataset(data, train_partition, sequences, encoding)
+    val_data = TcrDataset(data, val_partition, sequences, encoding)
+    test_data = TcrDataset(data, test_partition, sequences, encoding)
 
     # Shuffle data randomly is needed
     train_data.shuffle_data()
     val_data.shuffle_data()
     test_data.shuffle_data()
 
-    train_dl = DataLoader(train_data, batch_size, drop_last=True)
+    train_dl = DataLoader(train_data, batch_size)
     val_dl = DataLoader(val_data, batch_size)
     test_dl = DataLoader(test_data, batch_size)
 

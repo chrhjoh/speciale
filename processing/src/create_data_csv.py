@@ -144,9 +144,11 @@ def main():
     cdr_anno_a = parse_igblast(igblast_file_a)
     cdr_anno_b = parse_igblast(igblast_file_b)
 
-    arr_dict = { "pep" : [], "cdr1a" : [], "cdr2a" : [], "cdr3a" : [],"cdr1b" : [],"cdr2b" : [], "cdr3b" : [],
-                "fa_tot" : [], "fa_atr" : [], "fa_rep" : [], "fa_sol" : [], "fa_elec" : [], "fa_dun" : [],"p_aa_pp" : [],
-                "global_interactions" : [], "partition" : [], "label" : [], "mhc" : [], "tcra" : [], "tcrb" : [] }
+    arr_dict = {"pep" : [], "cdr1a" : [], "cdr2a" : [], "cdr3a" : [],"cdr1b" : [],"cdr2b" : [], "cdr3b" : [],
+                "pep_start" : [], "cdr1a_start" : [], "cdr2a_start" : [], "cdr3a_start" : [], "cdr1b_start" : [],
+                "cdr2b_start" : [], "cdr3b_start" : [],"fa_tot" : [], "fa_atr" : [], "fa_rep" : [], "fa_sol" : [],
+                "fa_elec" : [], "fa_dun" : [],"p_aa_pp" : [],"global_interactions" : [], "partition" : [], "label" : [],
+                "mhc" : [], "tcra" : [], "tcrb" : [], "tcra_start" : [], "tcrb_start" : []}
     for i, (partition, label_partition) in enumerate(zip(data,labels), 1):
         for j, (arr, label) in enumerate(zip(partition, label_partition), 1):  
             seq = arr[:,:20]    # Grap only one hot encoded sequence
@@ -162,9 +164,9 @@ def main():
             
             # Append the arrays with energy terms, so they can be included when reconstructing
             arr_dict["mhc"].append(reverse_one_hot(arr[:179, :20]))
+            arr_dict["pep"].append(reverse_one_hot(arr[179:188, :20]))
             arr_dict["tcra"].append(reverse_one_hot(arr[tcr_a_start:tcr_b_start, :20]))
             arr_dict["tcrb"].append(reverse_one_hot(arr[tcr_b_start:, :20]))
-            arr_dict["pep"].append(reverse_one_hot(arr[179:188, :20]))
             # idx works by tcr start + cdr start - 1 to tcr start + cdr end (-1 is because of igblast vs python indexing)
             # i indicates what partition to redistribute the array to after padding
             arr_dict["cdr1a"].append(reverse_one_hot(arr[tcr_a_start+cdr_anno_a[id]["CDR1-start"]-1:tcr_a_start+cdr_anno_a[id]["CDR1-stop"], :20]))
@@ -173,6 +175,15 @@ def main():
             arr_dict["cdr1b"].append(reverse_one_hot(arr[tcr_b_start+cdr_anno_b[id]["CDR1-start"]-1:tcr_b_start+cdr_anno_b[id]["CDR1-stop"], :20]))
             arr_dict["cdr2b"].append(reverse_one_hot(arr[tcr_b_start+cdr_anno_b[id]["CDR2-start"]-1:tcr_b_start+cdr_anno_b[id]["CDR2-stop"], :20]))
             arr_dict["cdr3b"].append(reverse_one_hot(arr[tcr_b_start+cdr_anno_b[id]["CDR3-start"]-1:tcr_b_start+cdr_anno_b[id]["CDR3-stop"], :20]))
+            arr_dict["pep_start"].append(179)
+            arr_dict["cdr1a_start"].append(tcr_a_start+cdr_anno_a[id]["CDR1-start"]-1)
+            arr_dict["cdr2a_start"].append(tcr_a_start+cdr_anno_a[id]["CDR2-start"]-1)
+            arr_dict["cdr3a_start"].append(tcr_a_start+cdr_anno_a[id]["CDR3-start"]-1)
+            arr_dict["cdr1b_start"].append(tcr_b_start+cdr_anno_b[id]["CDR1-start"]-1)
+            arr_dict["cdr2b_start"].append(tcr_b_start+cdr_anno_b[id]["CDR2-start"]-1)
+            arr_dict["cdr3b_start"].append(tcr_b_start+cdr_anno_b[id]["CDR3-start"]-1)
+            arr_dict["tcra_start"].append(tcr_a_start)
+            arr_dict["tcrb_start"].append(tcr_b_start)
             arr_dict["fa_tot"].append(list(arr[:, 20]))
             arr_dict["fa_atr"].append(list(arr[:, 21]))
             arr_dict["fa_rep"].append(list(arr[:, 22]))

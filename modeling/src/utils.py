@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import sys
 import torch
 import random
@@ -7,15 +8,23 @@ from torch import nn
 from torch.utils.data.dataloader import DataLoader
 from torch.utils.data.dataset import Dataset
 from sklearn import metrics
-import pickle
-
 
 class TcrDataset(Dataset):
-    def __init__(self, df, partitions):
+    def __init__(self, df, partitions, seq_features, encoding):
         self.df = df[df["partition"].isin(partitions)]
         self.labels = df.loc[df["partition"].isin(partitions), "label"].values
         self.is_reduced = False
-        self.data = None
+
+        # Add sequence data
+        print("Using sequence features:", ", ".join(seq_features))
+        self.data = self.get_sequence_features(seq_features, encoding)
+        
+        # Add local energy terms
+        local_energy = self.get_local_energies(seq_features)
+        # Add global energy
+        global_energy = self.get_global_energies()
+
+        self.data = np.concatenate([self.data, local_energy, global_energy], axis=1)
 
         
     def __len__(self):
@@ -34,20 +43,16 @@ class TcrDataset(Dataset):
             print("Could not shuffle, Data should be added first")
             sys.exit(1)
         
-    def add_sequence_features(self, features, encoding):
-        print("Using sequence features:", ", ".join(features))
+    def get_sequence_features(self, seq_features, encoding):
         data = []
         self.lengths = []
-        for feat in features:
+        for feat in seq_features:
             length = self.df[feat].str.len().max()
             encoded = self.df[feat].apply(lambda seq: self.encode(seq, encoding, length))
             data.append(np.stack(encoded.to_list()))
+            self.lengths.append(length)
 
-            if len(self.lengths) == 0:
-                self.lengths.append(length)
-            else:
-                self.lengths.append(length + self.lengths[-1])
-        self.data = np.concatenate(data, axis=2)
+        return np.concatenate(data, axis=2)
 
     def encode(self, seq, encoding, length):
         arrs = []
@@ -58,11 +63,37 @@ class TcrDataset(Dataset):
                 arrs.append(np.zeros(20))
         return np.transpose(np.stack(arrs))
     
-    def add_local_energies(self):
-        return NotImplementedError
-    
-    def add_global_energies(self):
-        return NotImplementedError
+    def get_local_energies(self, seq_features):
+        energy_features = ['fa_tot', 'fa_atr', 'fa_rep', 'fa_sol', 'fa_elec', 'fa_dun', 'p_aa_pp']
+        data = []
+        # Find energy features, sliced to the sequence features used
+        for length, seq_feat in zip(self.lengths, seq_features):
+            feature_data = []
+            start_idx = self.df[seq_feat+"_start"]
+            stop_idx = self.df[seq_feat].str.len() + start_idx
+
+            for energy_feat in energy_features:
+                tmp_df = pd.concat([self.df[energy_feat].rename("feature"), start_idx.rename("start"), stop_idx.rename("stop")], axis=1)
+                energies = tmp_df.apply(lambda x : self._slice_energies(x, length), axis=1)
+                feature_data.append(np.array(energies.to_list(),dtype=float))
+            data.append(np.stack(feature_data))
+        data = np.concatenate(data,axis=2).transpose(1,0,2)
+        return data
+
+    def _slice_energies(self, x, length):
+        """ Slices and pads energy features to the desired length"""
+        data = x["feature"][x["start"]:x["stop"]]
+        while len(data) < length:
+            data.append(0)
+        return data
+
+    def get_global_energies(self):
+        global_energy = np.zeros(shape=(self.data.shape[0], 
+                                len(self.df["global_interactions"].iloc[0]), 
+                                self.data.shape[2]))
+        global_energy[:,:,0] = np.array(self.df["global_interactions"].tolist(),dtype=float)
+        return global_energy
+        
     
     def subset_datapoints(self, idxs):
         if not self.is_reduced:
