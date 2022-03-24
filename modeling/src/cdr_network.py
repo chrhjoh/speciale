@@ -106,7 +106,7 @@ class CdrCNN(nn.Module):
     
 
         # Dense layers
-        n_convs = 7
+        n_convs = 3
         if self.use_global_features:
             self.dense1 = nn.Linear(cnn_channels * n_convs + self.n_global_feat, dense_neurons)
         else:
@@ -126,18 +126,18 @@ class CdrCNN(nn.Module):
         self.bn_start = nn.BatchNorm1d(self.n_local_feat)
 
         # Init weights
-        init.kaiming_normal_(self.cdr1a_conv.weight)
-        init.kaiming_normal_(self.cdr2a_conv.weight)
-        init.kaiming_normal_(self.cdr3a_conv.weight)
+        init.kaiming_uniform_(self.cdr1a_conv.weight)
+        init.kaiming_uniform_(self.cdr2a_conv.weight)
+        init.kaiming_uniform_(self.cdr3a_conv.weight)
 
-        init.kaiming_normal_(self.cdr1b_conv.weight)
-        init.kaiming_normal_(self.cdr2b_conv.weight)
-        init.kaiming_normal_(self.cdr3b_conv.weight)
+        init.kaiming_uniform_(self.cdr1b_conv.weight)
+        init.kaiming_uniform_(self.cdr2b_conv.weight)
+        init.kaiming_uniform_(self.cdr3b_conv.weight)
 
-        init.kaiming_normal_(self.pep_conv.weight)
+        init.kaiming_uniform_(self.pep_conv.weight)
 
-        init.kaiming_normal_(self.dense1.weight)
-        init.kaiming_normal_(self.dense_out.weight)
+        init.kaiming_uniform_(self.dense1.weight)
+        init.kaiming_uniform_(self.dense_out.weight)
 
 
     def forward(self, x):
@@ -174,9 +174,9 @@ class CdrCNN(nn.Module):
         cdr3b_conved = torch.sigmoid(self.cdr3b_conv(cdr3b))
 
         # If we want to adjust for paddings. Do so here
-        pep_conved = self.adjust_padding_activation(pep_conved, pep)
-        cdr3a_conved = self.adjust_padding_activation(cdr3a_conved, cdr3a)
-        cdr3b_conved = self.adjust_padding_activation(cdr3b_conved, cdr3b)
+        #pep_conved = self.adjust_padding_activation(pep_conved, pep)
+        #cdr3a_conved = self.adjust_padding_activation(cdr3a_conved, cdr3a)
+        #cdr3b_conved = self.adjust_padding_activation(cdr3b_conved, cdr3b)
 
         # Do all poolings
         pep_pool = self.max_pool(pep_conved)
@@ -202,7 +202,7 @@ class CdrCNN(nn.Module):
         ############################################
 
         # Combine convolutions
-        x = torch.cat((pep_pool, cdr1a_pool, cdr2a_pool, cdr3a_pool, cdr1b_pool, cdr2b_pool, cdr3b_pool), dim=1)
+        x = torch.cat((pep_pool, cdr3a_pool, cdr3b_pool), dim=1)
         x = torch.flatten(x, 1)
 
         if self.use_global_features:

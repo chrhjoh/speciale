@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import os
 import pickle
+import sys
 from torch import nn, optim, cuda
 from torch.utils.data.dataloader import DataLoader
 from utils import Runner, EarlyStopping, TcrDataset, setup_seed
@@ -28,14 +29,21 @@ def main():
     ############ PARAMETERS ##############
     DIR = "/Users/christianjohansen/Desktop/speciale/modeling"
     DATA_DIR = os.path.join(DIR,"data")
-    DATA_FILE = os.path.join(DATA_DIR, "datasets/train_data_98neg_98pos.csv")
-    MODEL_FILE = os.path.join(DATA_DIR, "models/cdr3_model.pt")
+    DATA_FILE = os.path.join(DATA_DIR, "datasets/train_data_all.csv")
+    MODEL_FILE = os.path.join(DATA_DIR, "models/test_model.pt")
     ENCODING_FILE = os.path.join(DATA_DIR, "blosum/blosum.pkl")
+    SCORE_FILE = os.path.join(DIR, "results/cnn_90_scores.csv")
 
+    CLI=False
     # Data parameters
-    train_partition = [1,2,3]
-    val_partition = [4]
-    test_partition = [5]
+    if CLI:
+        test_partition = [int(sys.argv[1]) % 5 + 1]
+        train_partition = [(int(sys.argv[1]) + i) % 5 + 1  for i in range(1,4)]
+        val_partition = [(int(sys.argv[1]) + 4) % 5 + 1]
+    else:   
+        train_partition = [1,2,3]
+        val_partition = [4]
+        test_partition = [5]
 
     sequences = ["pep", 
                  "cdr1a", "cdr2a", "cdr3a",
@@ -80,7 +88,7 @@ def main():
     val_data.shuffle_data()
     test_data.shuffle_data()
 
-    train_dl = DataLoader(train_data, batch_size)
+    train_dl = DataLoader(train_data, batch_size, drop_last=True)
     val_dl = DataLoader(val_data, batch_size)
     test_dl = DataLoader(test_data, batch_size)
 
@@ -127,7 +135,7 @@ def main():
             break
 
     ################ EVALUATE ##################
-    # Plots of training epochs
+    #Plots of training epochs
     epoch = np.arange(1, len(train_loss) + 1)
     plt.figure()
     plt.plot(epoch, train_loss, "r", epoch, val_loss, "b", linewidth=3)

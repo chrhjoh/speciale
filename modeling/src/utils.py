@@ -34,14 +34,12 @@ class TcrDataset(Dataset):
         return self.data[index], self.labels[index]
     
     def shuffle_data(self):
-        try:
-            idx = np.random.permutation(self.data.shape[0])
-            self.data = self.data[idx, : , :]
-            self.labels = self.labels[idx]
-            self.shuffle_idx = idx
-        except AttributeError:
-            print("Could not shuffle, Data should be added first")
-            sys.exit(1)
+        idx = np.random.permutation(self.data.shape[0])
+        self.data = self.data[idx, : , :]
+        self.labels = self.labels[idx]
+        self.shuffle_idx = idx
+        self.df = self.df.iloc[idx]
+
         
     def get_sequence_features(self, seq_features, encoding):
         data = []
@@ -233,7 +231,14 @@ class Runner:
         conv_out = torch.cat(conv_out)
         idxs = torch.cat(idxs, 1)
         self.model.return_pool = False
-        return max_output, idxs
+        return max_output, idxs, conv_out
+    
+    def scores_to_file(self, filename):
+        df = self.loader.dataset.df[["pep", "origin"]]
+        df["scores"] = self.y_score_batches
+        df["labels"] = self.y_true_batches
+        df.to_csv(filename,header=False, index=False, mode="a")
+            
 
 
 class EarlyStopping:
