@@ -1,6 +1,5 @@
 import numpy as np
 import pandas as pd
-import sys
 import torch
 import random
 import matplotlib.pyplot as plt
@@ -102,6 +101,65 @@ class TcrDataset(Dataset):
         self.labels = self.total_labels[idxs]
         self.is_reduced = True
 
+class AttentionDataset(Dataset):
+    def __init__(self, df, partitions, seq_features, encoding_path = "/Users/christianjohansen/Desktop/speciale/modeling/data/encoding/BLOSUM50"):
+        self.df = df[df["partition"].isin(partitions)]
+        self.labels = df.loc[df["partition"].isin(partitions), "label"].values
+        self.is_reduced = False
+        encoding = self.read_encoding(encoding_path)
+        self.data = self.get_sequence_features(seq_features, encoding)
+
+        
+    def __len__(self):
+        return len(self.labels)
+
+    def __getitem__(self, index):
+        return self.data[index], self.labels[index]
+    
+    def shuffle_data(self):
+        idx = np.random.permutation(self.data.shape[0])
+        self.data = self.data[idx, : , :]
+        self.labels = self.labels[idx]
+        self.shuffle_idx = idx
+        self.df = self.df.iloc[idx]
+
+        
+    def get_sequence_features(self, seq_features, encoding):
+        data = []
+        self.lengths = []
+        for feat in seq_features:
+            length = self.df[feat].str.len().max()
+            encoded = self.df[feat].apply(lambda seq: self.encode(seq, encoding, length))
+            data.append(np.stack(encoded.to_list()))
+            self.lengths.append(length)
+
+        return np.concatenate(data, axis=2)
+
+    def encode(self, seq, encoding, length):
+        arrs = []
+        for i in range(length):
+            if len(seq) > i:
+                arrs.append(encoding[seq[i]])
+            else:
+                arrs.append(np.zeros(20))
+        return np.transpose(np.stack(arrs))
+    
+    def read_encoding(self, encoding_path):
+        NORMALIZER = 5
+        with open(encoding_path, "r") as fh:
+            encoding = dict()
+            for line in fh:
+                if line.startswith("#"):
+                    continue
+                elif line.startswith(" "):
+                    positions = [aa.strip() for aa in line.split()]
+                else:
+                    target_aa = line.split()[0]
+                    
+                    scores = [int(x.strip()) / NORMALIZER for x in line.split()[1:]]
+                    encoding[target_aa] = np.array(scores)
+            
+            return encoding
 class Runner:
 
     def __init__(self, loader: DataLoader, model: nn.Module, criterion, loss_weight, device="cpu", optimizer = None, cutoff = 0.5):

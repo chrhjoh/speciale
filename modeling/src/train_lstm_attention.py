@@ -4,34 +4,22 @@ import seaborn as sns
 import numpy as np
 import pandas as pd
 import os
-import pickle
 import sys
 from torch import nn, optim, cuda
 from torch.utils.data.dataloader import DataLoader
-from utils import Runner, EarlyStopping, TcrDataset, setup_seed
-from cdr_network import CdrCNN
+from utils import Runner, EarlyStopping, AttentionDataset, setup_seed
+from attention_net import LSTMNet, AttentionNet
 
 custom_params = {"axes.spines.right": False, "axes.spines.top": False}
 sns.set_theme(style="ticks", rc=custom_params, palette="pastel")
-
-def read_data(filename):
-    local_feat = ['fa_tot', 'fa_atr', 'fa_rep', 'fa_sol', 'fa_elec', 'fa_dun', 'p_aa_pp']
-    global_feat = ["global_interactions"]
-    df = pd.read_csv(filename, index_col=0)
-    for feat in local_feat:
-        df[feat] = df[feat].apply(lambda x : x.strip("[]").split(", "))
-    for feat in global_feat:
-        df[feat] = df[feat].apply(lambda x : x.strip("[]").split(", "))
-    return df
 
 def main():
 
     ############ PARAMETERS ##############
     DIR = "/Users/christianjohansen/Desktop/speciale/modeling"
     DATA_DIR = os.path.join(DIR,"data")
-    DATA_FILE = os.path.join(DATA_DIR, "datasets/train_data_all_energy.csv")
+    DATA_FILE = os.path.join(DATA_DIR, "datasets/train_data_all.csv")
     MODEL_FILE = os.path.join(DATA_DIR, "models/test_model.pt")
-    ENCODING_FILE = os.path.join(DATA_DIR, "blosum/blosum.pkl")
 
     CLI=False
     # Data parameters
@@ -47,10 +35,7 @@ def main():
     sequences = ["pep", 
                  "cdr1a", "cdr2a", "cdr3a",
                  "cdr1b", "cdr2b", "cdr3b"]
-
-    local_features = np.arange(20)
-    global_features = None
-    use_global_features = False
+    use_all_cdrs = True
 
     # Loader parameters
     batch_size = 64
@@ -62,25 +47,15 @@ def main():
     lr = 0.005
     weight_decay = 0.0005
 
-    # Layer parameters
-    cnn_channels = 20
-    hidden_neurons = 64
-    dropout = 0.3
-    cnn_kernel = 3
-
     ################ Load Data ####################
     setup_seed(seed)
     device = torch.device("cuda" if cuda.is_available() else "cpu")
     print("Using device:", device)
 
-    # Load encoding
-    with open(ENCODING_FILE, "rb" ) as fh:
-            encoding = pickle.load(fh)
-
-    data = read_data(DATA_FILE)
-    train_data = TcrDataset(data, train_partition, sequences, encoding)
-    val_data = TcrDataset(data, val_partition, sequences, encoding)
-    test_data = TcrDataset(data, test_partition, sequences, encoding)
+    data = pd.read_csv(DATA_FILE, index_col=0)
+    train_data = AttentionDataset(data, train_partition, sequences)
+    val_data = AttentionDataset(data, val_partition, sequences)
+    test_data = AttentionDataset(data, test_partition, sequences)
 
     # Shuffle data randomly is needed
     train_data.shuffle_data()
@@ -98,7 +73,7 @@ def main():
     stopper = EarlyStopping(patience, MODEL_FILE)
 
     # Define network
-    net = CdrCNN(local_features, global_features, use_global_features, cnn_channels=cnn_channels, dropout=dropout, cnn_kernel_size=cnn_kernel, dense_neurons=hidden_neurons)
+    net = AttentionNet(all_cdrs=use_all_cdrs)
     net.to(device)
  
     optimizer = optim.Adam(net.parameters(), lr=lr,
@@ -151,7 +126,7 @@ def main():
     plt.xlabel("Epoch"), plt.ylabel("AUC")
     plt.show()
 
-    final_model = CdrCNN(local_features, global_features, use_global_features, cnn_channels=cnn_channels, dropout=dropout, cnn_kernel_size=cnn_kernel, dense_neurons=hidden_neurons)
+    final_model = AttentionNet(all_cdrs=use_all_cdrs)
     final_model.load_state_dict(torch.load(MODEL_FILE))
     final_model.to(device)
 
