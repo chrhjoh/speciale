@@ -31,7 +31,7 @@ def main():
     DATA_DIR = os.path.join(DIR,"data")
     DATA_FILE = os.path.join(DATA_DIR, "datasets/train_data_all_energy.csv")
     MODEL_FILE = os.path.join(DATA_DIR, "models/test_model.pt")
-    ENCODING_FILE = os.path.join(DATA_DIR, "blosum/blosum.pkl")
+    ATTENTION_FILE = os.path.join(DIR, 'results/cnn_att_partition5.csv')
 
     CLI=False
     # Data parameters
@@ -73,14 +73,10 @@ def main():
     device = torch.device("cuda" if cuda.is_available() else "cpu")
     print("Using device:", device)
 
-    # Load encoding
-    with open(ENCODING_FILE, "rb" ) as fh:
-            encoding = pickle.load(fh)
-
     data = read_data(DATA_FILE)
-    train_data = TcrDataset(data, train_partition, sequences, encoding)
-    val_data = TcrDataset(data, val_partition, sequences, encoding)
-    test_data = TcrDataset(data, test_partition, sequences, encoding)
+    train_data = TcrDataset(data, train_partition, sequences)
+    val_data = TcrDataset(data, val_partition, sequences)
+    test_data = TcrDataset(data, test_partition, sequences)
 
     # Shuffle data randomly is needed
     train_data.shuffle_data()
@@ -95,7 +91,7 @@ def main():
     # Define loss and optimizer
     criterion = nn.BCELoss(reduction='none')
     loss_weight = sum(train_data.labels) / len(train_data.labels)
-    stopper = EarlyStopping(patience, MODEL_FILE)
+    stopper = EarlyStopping(patience, filename=MODEL_FILE)
 
     # Define network
     net = CdrCNN(local_features, global_features, use_global_features, cnn_channels=cnn_channels, dropout=dropout, cnn_kernel_size=cnn_kernel, dense_neurons=hidden_neurons)
@@ -183,6 +179,8 @@ def main():
     plt.title("Test Data")
     plt.show()
 
+    test_runner.save_attention_weights(ATTENTION_FILE)
+    print("Attention results saved at:", ATTENTION_FILE)
     print("Final model saved at:", MODEL_FILE)
 
 if __name__ == "__main__":

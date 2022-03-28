@@ -9,13 +9,14 @@ from torch.utils.data.dataset import Dataset
 from sklearn import metrics
 
 class TcrDataset(Dataset):
-    def __init__(self, df, partitions, seq_features, encoding):
+    def __init__(self, df, partitions, seq_features, encoding_path="/Users/christianjohansen/Desktop/speciale/modeling/data/encoding/BLOSUM50"):
         self.df = df[df["partition"].isin(partitions)]
         self.labels = df.loc[df["partition"].isin(partitions), "label"].values
         self.is_reduced = False
 
         # Add sequence data
         print("Using sequence features:", ", ".join(seq_features))
+        encoding = self.read_encoding(encoding_path)
         self.data = self.get_sequence_features(seq_features, encoding)
         
         # Add local energy terms
@@ -90,24 +91,32 @@ class TcrDataset(Dataset):
                                 self.data.shape[2]))
         global_energy[:,:,0] = np.array(self.df["global_interactions"].tolist(),dtype=float)
         return global_energy
-        
     
-    def subset_datapoints(self, idxs):
-        if not self.is_reduced:
-            self.total_data = self.data.copy()
-            self.total_labels = self.labels.copy()
+    def read_encoding(self, encoding_path):
+        NORMALIZER = 5
+        with open(encoding_path, "r") as fh:
+            encoding = dict()
+            for line in fh:
+                if line.startswith("#"):
+                    continue
+                elif not line.startswith(" "):
+                    target_aa = line.split()[0]
+                    
+                    scores = [int(x.strip()) / NORMALIZER for x in line.split()[1:]]
+                    encoding[target_aa] = np.array(scores)
+            
+            return encoding
 
-        self.data = self.total_data[idxs]
-        self.labels = self.total_labels[idxs]
-        self.is_reduced = True
 
 class AttentionDataset(Dataset):
-    def __init__(self, df, partitions, seq_features, encoding_path = "/Users/christianjohansen/Desktop/speciale/modeling/data/encoding/BLOSUM50"):
+    def __init__(self, df, partitions, seq_features, shuffle=True, encoding_path = "/Users/christianjohansen/Desktop/speciale/modeling/data/encoding/BLOSUM50"):
         self.df = df[df["partition"].isin(partitions)]
         self.labels = df.loc[df["partition"].isin(partitions), "label"].values
         self.is_reduced = False
         encoding = self.read_encoding(encoding_path)
         self.data = self.get_sequence_features(seq_features, encoding)
+        if shuffle:
+            self.shuffle_data()
 
         
     def __len__(self):
@@ -151,9 +160,7 @@ class AttentionDataset(Dataset):
             for line in fh:
                 if line.startswith("#"):
                     continue
-                elif line.startswith(" "):
-                    positions = [aa.strip() for aa in line.split()]
-                else:
+                elif not line.startswith(" "):
                     target_aa = line.split()[0]
                     
                     scores = [int(x.strip()) / NORMALIZER for x in line.split()[1:]]
@@ -268,28 +275,33 @@ class Runner:
         plt.ylabel("True Positive Rate")
         plt.xlabel("False Positive Rate")
     
-    def get_pool_idxs(self, feat):
-        self.model.return_pool = feat
-        if self.mode == "Train":
-            self.model.train()
-        else:
-            self.model.eval()
-        max_output = []
-        idxs = []
-        conv_out = []
-
+    def save_attention_weights(self, attention_filename, output_filename=None):
+        """
+        Gets the attention weights for all observations in dataset and saves it
+        to csv
+        """
+        self.model.eval()
+        outputs = []
+        attentions = []
         for x, _  in self.loader:
             x = x.float().to(self.device)
-            (max_out, idx), conv = self.model(x)
-            max_output.append(max_out)
-            idxs.extend(idx)
-            conv_out.append(conv)
+            output, attention = self.model(x, return_attention=True)
+            outputs.append(output)
+            attentions.append(attention)
 
-        max_output = torch.cat(max_output).flatten(1)
-        conv_out = torch.cat(conv_out)
-        idxs = torch.cat(idxs, 1)
-        self.model.return_pool = False
-        return max_output, idxs, conv_out
+        self.combine_and_save_dfs(attentions, attention_filename)
+        if output_filename is not None:
+            self.combine_and_save_dfs(outputs, output_filename)
+
+    def combine_and_save_dfs(self, output, filename):
+        """
+        Cleans a list of dfs, adds information about the output and then saves the resulting
+        csv to filename.
+        """
+        output_df = pd.concat(output)
+        output_df = pd.concat([output_df.set_index(self.loader.dataset.df.index), self.loader.dataset.df],axis=1)
+        output_df.to_csv(filename, index=False)
+
     
     def scores_to_file(self, filename):
         df = self.loader.dataset.df[["pep", "origin"]]
@@ -300,17 +312,18 @@ class Runner:
 
 
 class EarlyStopping:
-    def __init__(self, patience: int, filename = "early_stopping.pt", path : str = ""):
+    def __init__(self, patience: int, delta: float = 0.003, filename = "early_stopping.pt", path : str = ""):
         self.patience = patience
         self.current_count = 0
         self.best_loss = np.inf
         self.stop = False
         self.path = path
         self.filename = filename
+        self.delta = delta
     
     def evaluate_epoch(self, metric: float, model: nn.Module, epoch: int):
 
-        if metric < self.best_loss:
+        if metric + self.delta < self.best_loss:
             self.best_loss = metric
             self.best_epoch = epoch
             self.current_count = 0
