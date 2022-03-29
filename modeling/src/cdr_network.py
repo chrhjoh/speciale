@@ -34,6 +34,11 @@ class CdrCNN(nn.Module):
         if use_global_features: 
             self.global_features = global_features
             self.n_global_feat = len(global_features)
+                
+        if cnn_padding == "same":
+            self.cnn_padding = int((cnn_kernel_size - 1) / 2)
+        else:
+            self.cnn_padding = cnn_padding
     
         ########## LAYERS FOR PEPTIDE AND CDR3s ###########
         self.pep = np.arange(9)
@@ -60,11 +65,6 @@ class CdrCNN(nn.Module):
                                   kernel_size  = cnn_kernel_size,
                                   stride       = cnn_stride,
                                   padding      = cnn_padding)
-
-        if cnn_padding == "same":
-            self.cnn_padding = int((cnn_kernel_size - 1) / 2)
-        else:
-            self.cnn_padding = cnn_padding
         
         ############# LAYERS FOR OTHER CDRS ###############
         if use_all_cdrs:
@@ -231,10 +231,10 @@ class CdrCNN(nn.Module):
         # or attention (batch, seq_len)
 
         if len(features) == 7: # if using all cdrs
-            names = ["cdr1a", "cdr2a", "cdr3a",  "cdr1b",  "cdr2b",  "cdr3b", "pep"]
+            names = ["pep", "cdr1a", "cdr2a",  "cdr3a",  "cdr1b",  "cdr2b", "cdr3b"]
 
         else:   # if using only cdr3s
-            names = ["cdr3a", "cdr3b", "pep"]
+            names = ["pep", "cdr3a", "cdr3b", ]
 
         n_filters = features[0][0].shape[1]
 

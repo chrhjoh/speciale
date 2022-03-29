@@ -4,7 +4,6 @@ import seaborn as sns
 import numpy as np
 import pandas as pd
 import os
-import pickle
 import sys
 from torch import nn, optim, cuda
 from torch.utils.data.dataloader import DataLoader
@@ -32,6 +31,7 @@ def main():
     DATA_FILE = os.path.join(DATA_DIR, "datasets/train_data_all_energy.csv")
     MODEL_FILE = os.path.join(DATA_DIR, "models/test_model.pt")
     ATTENTION_FILE = os.path.join(DIR, 'results/cnn_att_partition5.csv')
+    ACTIVATION_FILE = os.path.join(DIR, 'results/cnn_act_partition5.csv')
 
     CLI=False
     # Data parameters
@@ -51,6 +51,7 @@ def main():
     local_features = np.arange(20)
     global_features = None
     use_global_features = False
+    use_all_cdrs = False
 
     # Loader parameters
     batch_size = 64
@@ -60,7 +61,7 @@ def main():
     epochs = 300
     patience = 20
     lr = 0.005
-    weight_decay = 0.0005
+    weight_decay = 0
 
     # Layer parameters
     cnn_channels = 20
@@ -94,7 +95,9 @@ def main():
     stopper = EarlyStopping(patience, filename=MODEL_FILE)
 
     # Define network
-    net = CdrCNN(local_features, global_features, use_global_features, cnn_channels=cnn_channels, dropout=dropout, cnn_kernel_size=cnn_kernel, dense_neurons=hidden_neurons)
+    net = CdrCNN(local_features, global_features, use_global_features, 
+                 cnn_channels=cnn_channels, dropout=dropout, cnn_kernel_size=cnn_kernel,
+                 dense_neurons=hidden_neurons, use_all_cdrs=use_all_cdrs)
     net.to(device)
  
     optimizer = optim.Adam(net.parameters(), lr=lr,
@@ -147,7 +150,10 @@ def main():
     plt.xlabel("Epoch"), plt.ylabel("AUC")
     plt.show()
 
-    final_model = CdrCNN(local_features, global_features, use_global_features, cnn_channels=cnn_channels, dropout=dropout, cnn_kernel_size=cnn_kernel, dense_neurons=hidden_neurons)
+    final_model = CdrCNN(local_features, global_features, use_global_features,
+                         cnn_channels=cnn_channels, dropout=dropout, cnn_kernel_size=cnn_kernel,
+                         dense_neurons=hidden_neurons, use_all_cdrs=use_all_cdrs)
+
     final_model.load_state_dict(torch.load(MODEL_FILE))
     final_model.to(device)
 
@@ -179,7 +185,7 @@ def main():
     plt.title("Test Data")
     plt.show()
 
-    test_runner.save_attention_weights(ATTENTION_FILE)
+    test_runner.save_attention_weights(ATTENTION_FILE, ACTIVATION_FILE)
     print("Attention results saved at:", ATTENTION_FILE)
     print("Final model saved at:", MODEL_FILE)
 
