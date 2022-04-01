@@ -109,16 +109,15 @@ class TcrDataset(Dataset):
 
 
 class AttentionDataset(Dataset):
-    def __init__(self, df, partitions, seq_features, shuffle=True, encoding_path = "/Users/christianjohansen/Desktop/speciale/modeling/data/encoding/BLOSUM50"):
+    def __init__(self, df, partitions, seq_features, tokenize=False, shuffle=True, encoding_path = "/Users/christianjohansen/Desktop/speciale/modeling/data/encoding/BLOSUM50"):
         self.df = df[df["partition"].isin(partitions)]
         self.labels = df.loc[df["partition"].isin(partitions), "label"].values
         self.is_reduced = False
         encoding = self.read_encoding(encoding_path)
-        self.data = self.get_sequence_features(seq_features, encoding)
+        self.data = self.get_sequence_features(seq_features, encoding, tokenize)
         if shuffle:
             self.shuffle_data()
 
-        
     def __len__(self):
         return len(self.labels)
 
@@ -127,22 +126,27 @@ class AttentionDataset(Dataset):
     
     def shuffle_data(self):
         idx = np.random.permutation(self.data.shape[0])
-        self.data = self.data[idx, : , :]
+        self.data = self.data[idx]
         self.labels = self.labels[idx]
         self.shuffle_idx = idx
         self.df = self.df.iloc[idx]
 
         
-    def get_sequence_features(self, seq_features, encoding):
+    def get_sequence_features(self, seq_features, encoding, tokenize):
         data = []
         self.lengths = []
         for feat in seq_features:
             length = self.df[feat].str.len().max()
-            encoded = self.df[feat].apply(lambda seq: self.encode(seq, encoding, length))
+            if tokenize:
+                encoded = self.df[feat].apply(lambda seq: self.tokenize(seq, length))
+            else:
+                encoded = self.df[feat].apply(lambda seq: self.encode(seq, encoding, length))
             data.append(np.stack(encoded.to_list()))
             self.lengths.append(length)
-
-        return np.concatenate(data, axis=2)
+        if tokenize:
+            return np.concatenate(data, axis=1)
+        else:
+            return np.concatenate(data, axis=2)
 
     def encode(self, seq, encoding, length):
         arrs = []
@@ -167,6 +171,17 @@ class AttentionDataset(Dataset):
                     encoding[target_aa] = np.array(scores)
             
             return encoding
+    
+    def tokenize(self, seq, length):
+        tokenizer = dict(zip("ARNDCQEGHILKMFPSTWYV", range(1,21)))
+        token_seq = []
+        for i in range(length):
+            if len(seq) > i:
+                token_seq.append(tokenizer[seq[i]])
+            else:
+                token_seq.append(0)
+        return np.array(token_seq)
+
 class Runner:
 
     def __init__(self, loader: DataLoader, model: nn.Module, criterion, loss_weight, device="cpu", optimizer = None, cutoff = 0.5):

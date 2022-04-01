@@ -8,7 +8,7 @@ import sys
 from torch import nn, optim, cuda
 from torch.utils.data.dataloader import DataLoader
 from utils import Runner, EarlyStopping, AttentionDataset, setup_seed
-from attention_net import LSTMNet, AttentionNet
+from attention_net import LSTMNet, AttentionNet, EmbedAttentionNet
 
 custom_params = {"axes.spines.right": False, "axes.spines.top": False}
 sns.set_theme(style="ticks", rc=custom_params, palette="pastel")
@@ -19,7 +19,8 @@ def main():
     DIR = "/Users/christianjohansen/Desktop/speciale/modeling"
     DATA_DIR = os.path.join(DIR,"data")
     DATA_FILE = os.path.join(DATA_DIR, "datasets/train_data_all.csv")
-    MODEL_FILE = os.path.join(DATA_DIR, "models/test_model.pt")
+    MODEL_FILE = os.path.join(DATA_DIR, "models/lstm_cdr_model.pt")
+    ATTENTION_FILE = os.path.join(DIR, 'results/lstm_attention_partition5.csv')
 
     CLI=False
     # Data parameters
@@ -34,33 +35,30 @@ def main():
 
     sequences = ["pep", 
                  "cdr1a", "cdr2a", "cdr3a",
-                 "cdr1b", "cdr2b", "cdr3b"]
-    use_all_cdrs = True
+                 "cdr1b", "cdr2b", "cdr3b",]
+    tokenize = True
+
 
     # Loader parameters
     batch_size = 64
     seed= 42
+    setup_seed(seed)
 
     # Hyperparameters
     epochs = 300
     patience = 20
     lr = 0.005
-    weight_decay = 0.0005
+    weight_decay = 0
 
     ################ Load Data ####################
-    setup_seed(seed)
+
     device = torch.device("cuda" if cuda.is_available() else "cpu")
     print("Using device:", device)
 
     data = pd.read_csv(DATA_FILE, index_col=0)
-    train_data = AttentionDataset(data, train_partition, sequences)
-    val_data = AttentionDataset(data, val_partition, sequences)
-    test_data = AttentionDataset(data, test_partition, sequences)
-
-    # Shuffle data randomly is needed
-    train_data.shuffle_data()
-    val_data.shuffle_data()
-    test_data.shuffle_data()
+    train_data = AttentionDataset(data, train_partition, sequences, shuffle=True, tokenize=tokenize)
+    val_data = AttentionDataset(data, val_partition, sequences, shuffle=True, tokenize=tokenize)
+    test_data = AttentionDataset(data, test_partition, sequences, shuffle=True, tokenize=tokenize)
 
     train_dl = DataLoader(train_data, batch_size, drop_last=True)
     val_dl = DataLoader(val_data, batch_size)
@@ -70,10 +68,10 @@ def main():
     # Define loss and optimizer
     criterion = nn.BCELoss(reduction='none')
     loss_weight = sum(train_data.labels) / len(train_data.labels)
-    stopper = EarlyStopping(patience, MODEL_FILE)
+    stopper = EarlyStopping(patience, filename=MODEL_FILE,delta=0)
 
     # Define network
-    net = AttentionNet(all_cdrs=use_all_cdrs)
+    net = EmbedAttentionNet(embed_dim=128)
     net.to(device)
  
     optimizer = optim.Adam(net.parameters(), lr=lr,
@@ -101,7 +99,7 @@ def main():
         val_loss.append(val_runner.loss)
         train_auc.append(train_runner.auc)
         val_auc.append(val_runner.auc)
-        
+
         train_runner.reset()
         val_runner.reset()
 
@@ -126,13 +124,11 @@ def main():
     plt.xlabel("Epoch"), plt.ylabel("AUC")
     plt.show()
 
-    final_model = AttentionNet(all_cdrs=use_all_cdrs)
-    final_model.load_state_dict(torch.load(MODEL_FILE))
-    final_model.to(device)
+    net.load_state_dict(torch.load(MODEL_FILE))
 
-    train_runner.model = final_model
-    val_runner.model = final_model
-    test_runner.model = final_model
+    train_runner.model = net
+    val_runner.model = net
+    test_runner.model = net
 
     train_runner.reset()
     val_runner.reset()
@@ -158,7 +154,9 @@ def main():
     plt.title("Test Data")
     plt.show()
 
+    test_runner.save_attention_weights(ATTENTION_FILE)
     print("Final model saved at:", MODEL_FILE)
-
+    print("Attention weights saved at:", ATTENTION_FILE)
+    
 if __name__ == "__main__":
     main() 
