@@ -114,10 +114,10 @@ tcra_data_f <- wrangle_feature(data_tcrs, 1, "cdr3a", "forward")
 
 # Plot Data ---------------------------------------------------------------
 anno_alpha = list("cdr1_start" = 20, "cdr1_end" = 27, 
-            "cdr2_start" = 45, "cdr2_end" = 52,
+            "cdr2_start" = 45, "cdr2_end" = 54,
             "cdr3_start" = 84, "cdr3_end" = 101)
 anno_beta = list("cdr1_start" = 22, "cdr1_end" = 28, 
-                  "cdr2_start" = 47, "cdr2_end" = 54,
+                  "cdr2_start" = 47, "cdr2_end" = 55,
                   "cdr3_start" = 89, "cdr3_end" = 107)
 
 attention_plot_tcrs(tcra_data_f, anno_alpha)
@@ -127,7 +127,33 @@ attention_plot_cdrs(cdr3b_data_f, 17)
 attention_plot_cdrs(cdr3a_data_r, 17)
 
 
+# Wrangle data for CDR3 length plot
+cdr_plot_data <- data_cdrs %>%
+  select(cdr3a, cdr3b, label) %>%
+  pivot_longer(cols=c(cdr3a, cdr3b),
+               names_to = "type",
+               values_to = "sequence") %>%
+  mutate(cdr_len = str_length(sequence) %>% as_factor(),
+         label = if_else(label==1, true = "Positive", false = "Negative") %>% as_factor())
 
+
+cdr_plot_data %>%
+  filter(type == "cdr3b") %>%
+  ggplot(mapping = aes(x=cdr_len, fill=label))+
+  geom_bar()+
+  facet_wrap(vars(label))+
+  labs(x="CDR3b length")+
+  theme_bw()+
+  theme(legend.position="none")
+
+cdr_plot_data %>%
+  filter(type == "cdr3a") %>%
+  ggplot(mapping = aes(x=cdr_len, fill=label))+
+  geom_bar()+
+  facet_wrap(vars(label))+
+  labs(x="CDR3a length")+
+  theme_bw()+
+  theme(legend.position="none")
 
   
 

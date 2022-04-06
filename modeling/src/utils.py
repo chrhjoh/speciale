@@ -3,10 +3,13 @@ import pandas as pd
 import torch
 import random
 import matplotlib.pyplot as plt
+import os
+import sys
 from torch import nn
 from torch.utils.data.dataloader import DataLoader
 from torch.utils.data.dataset import Dataset
 from sklearn import metrics
+from gensim.models import KeyedVectors
 
 class TcrDataset(Dataset):
     def __init__(self, df, partitions, seq_features, encoding_path="/Users/christianjohansen/Desktop/speciale/modeling/data/encoding/BLOSUM50"):
@@ -109,12 +112,11 @@ class TcrDataset(Dataset):
 
 
 class AttentionDataset(Dataset):
-    def __init__(self, df, partitions, seq_features, tokenize=False, shuffle=True, encoding_path = "/Users/christianjohansen/Desktop/speciale/modeling/data/encoding/BLOSUM50"):
+    def __init__(self, df, partitions, seq_features, encode_type="encode", shuffle=True):
         self.df = df[df["partition"].isin(partitions)]
-        self.labels = df.loc[df["partition"].isin(partitions), "label"].values
-        self.is_reduced = False
-        encoding = self.read_encoding(encoding_path)
-        self.data = self.get_sequence_features(seq_features, encoding, tokenize)
+        self.labels = df.loc[df["partition"].isin(partitions), "binder"].values
+        self.ENCODE_PATH = "/Users/christianjohansen/Desktop/speciale/modeling/data/encoding"
+        self.data = self.get_sequence_features(seq_features, encode_type)
         if shuffle:
             self.shuffle_data()
 
@@ -132,19 +134,55 @@ class AttentionDataset(Dataset):
         self.df = self.df.iloc[idx]
 
         
-    def get_sequence_features(self, seq_features, encoding, tokenize):
+    def get_sequence_features(self, seq_features, encode_type):
+        """
+        Gets the sequence features with a specific encoding type
+        Either make a blosum encoding, gets a simple token representation
+        or get a high dimensional trained embedding from word2vec.
+        """
         data = []
         self.lengths = []
         for feat in seq_features:
             length = self.df[feat].str.len().max()
-            if tokenize:
-                encoded = self.df[feat].apply(lambda seq: self.tokenize(seq, length))
-            else:
+            if encode_type == "encode":
+                encoding = self.read_encoding(os.path.join(self.ENCODE_PATH, "BLOSUM50"))
                 encoded = self.df[feat].apply(lambda seq: self.encode(seq, encoding, length))
+                
+            elif encode_type == "tokenize":
+                encoded = self.df[feat].apply(lambda seq: self.tokenize(seq, length))
+
+            elif encode_type == "embed":
+                if feat == "cdr3a":
+                    encoding = KeyedVectors.load(os.path.join(self.ENCODE_PATH, "embeddings_cdr3a.wv"))
+                    encoded = self.df[feat].apply(lambda seq: self.encode(seq, encoding, length))
+                    
+                elif feat == "cdr3b":
+                    encoding = KeyedVectors.load(os.path.join(self.ENCODE_PATH, "embeddings_cdr3b.wv"))
+                    encoded = self.df[feat].apply(lambda seq: self.encode(seq, encoding, length))
+
+                else:
+                    encoding = self.read_encoding(os.path.join(self.ENCODE_PATH, "BLOSUM50"))
+                    encoded = self.df[feat].apply(lambda seq: self.encode(seq, encoding, length))
+
+            else:
+                print(encode_type, "not supported")
+                print("Use: encode, tokenize or embed")
+                sys.exit(1)
+                
             data.append(np.stack(encoded.to_list()))
             self.lengths.append(length)
-        if tokenize:
+
+        if encode_type == "tokenize":
             return np.concatenate(data, axis=1)
+        elif encode_type == "embed":
+            EMBED_DIM = 100
+            # Have to pad the feature dimension since, some have dim = 20 and some have EMBED_DIM
+            pad_arrs = []
+            for arr in data:
+                pad_arr = np.zeros((arr.shape[0], EMBED_DIM, arr.shape[2]))
+                pad_arr[:arr.shape[0], :arr.shape[1], :arr.shape[2]] = arr
+                pad_arrs.append(pad_arr)
+            return np.concatenate(pad_arrs, axis=2)
         else:
             return np.concatenate(data, axis=2)
 
@@ -154,7 +192,7 @@ class AttentionDataset(Dataset):
             if len(seq) > i:
                 arrs.append(encoding[seq[i]])
             else:
-                arrs.append(np.zeros(20))
+                arrs.append(np.zeros(arrs[0].shape))
         return np.transpose(np.stack(arrs))
     
     def read_encoding(self, encoding_path):

@@ -18,7 +18,7 @@ def main():
     ############ PARAMETERS ##############
     DIR = "/Users/christianjohansen/Desktop/speciale/modeling"
     DATA_DIR = os.path.join(DIR,"data")
-    DATA_FILE = os.path.join(DATA_DIR, "datasets/train_data_all.csv")
+    DATA_FILE = os.path.join(DATA_DIR, "datasets/train_set_fs.csv")
     MODEL_FILE = os.path.join(DATA_DIR, "models/lstm_cdr_model.pt")
     ATTENTION_FILE = os.path.join(DIR, 'results/lstm_attention_partition5.csv')
 
@@ -33,11 +33,9 @@ def main():
         val_partition = [4]
         test_partition = [5]
 
-    sequences = ["pep", 
-                 "cdr1a", "cdr2a", "cdr3a",
-                 "cdr1b", "cdr2b", "cdr3b",]
-    tokenize = True
-
+    sequences = ["peptide", 
+                 "CDR3a", "CDR3b"]
+    ENCODING = "embed"
 
     # Loader parameters
     batch_size = 64
@@ -56,9 +54,9 @@ def main():
     print("Using device:", device)
 
     data = pd.read_csv(DATA_FILE, index_col=0)
-    train_data = AttentionDataset(data, train_partition, sequences, shuffle=True, tokenize=tokenize)
-    val_data = AttentionDataset(data, val_partition, sequences, shuffle=True, tokenize=tokenize)
-    test_data = AttentionDataset(data, test_partition, sequences, shuffle=True, tokenize=tokenize)
+    train_data = AttentionDataset(data, train_partition, sequences, shuffle=True, encode_type=ENCODING)
+    val_data = AttentionDataset(data, val_partition, sequences, shuffle=True, encode_type=ENCODING)
+    test_data = AttentionDataset(data, test_partition, sequences, shuffle=True, encode_type=ENCODING)
 
     train_dl = DataLoader(train_data, batch_size, drop_last=True)
     val_dl = DataLoader(val_data, batch_size)
@@ -67,11 +65,11 @@ def main():
     ############### DEFINE NETWORK ################
     # Define loss and optimizer
     criterion = nn.BCELoss(reduction='none')
-    loss_weight = sum(train_data.labels) / len(train_data.labels)
+    loss_weight = 0.25
     stopper = EarlyStopping(patience, filename=MODEL_FILE,delta=0)
 
     # Define network
-    net = EmbedAttentionNet(embed_dim=128)
+    net = EmbedAttentionNet()
     net.to(device)
  
     optimizer = optim.Adam(net.parameters(), lr=lr,
