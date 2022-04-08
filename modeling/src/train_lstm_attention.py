@@ -9,6 +9,7 @@ from torch import nn, optim, cuda
 from torch.utils.data.dataloader import DataLoader
 from utils import Runner, EarlyStopping, AttentionDataset, setup_seed
 from attention_net import LSTMNet, AttentionNet, EmbedAttentionNet
+from gensim.models import KeyedVectors
 
 custom_params = {"axes.spines.right": False, "axes.spines.top": False}
 sns.set_theme(style="ticks", rc=custom_params, palette="pastel")
@@ -18,7 +19,7 @@ def main():
     ############ PARAMETERS ##############
     DIR = "/Users/christianjohansen/Desktop/speciale/modeling"
     DATA_DIR = os.path.join(DIR,"data")
-    DATA_FILE = os.path.join(DATA_DIR, "datasets/train_set_fs.csv")
+    DATA_FILE = os.path.join(DATA_DIR, "datasets/train_data_all.csv")
     MODEL_FILE = os.path.join(DATA_DIR, "models/lstm_cdr_model.pt")
     ATTENTION_FILE = os.path.join(DIR, 'results/lstm_attention_partition5.csv')
 
@@ -33,9 +34,12 @@ def main():
         val_partition = [4]
         test_partition = [5]
 
-    sequences = ["peptide", 
-                 "CDR3a", "CDR3b"]
-    ENCODING = "embed"
+    sequences = ["pep", 
+                 "cdr1a", "cdr2a", "cdr3a",
+                 "cdr1b", "cdr2b", "cdr3b",]
+    ENCODING = "tokenize"
+    cdr3a_embedding = KeyedVectors.load(os.path.join(DATA_DIR, "encoding/embeddings_cdr3a.wv"))
+    cdr3b_embedding = KeyedVectors.load(os.path.join(DATA_DIR, "encoding/embeddings_cdr3b.wv"))
 
     # Loader parameters
     batch_size = 64
@@ -65,11 +69,11 @@ def main():
     ############### DEFINE NETWORK ################
     # Define loss and optimizer
     criterion = nn.BCELoss(reduction='none')
-    loss_weight = 0.25
+    loss_weight = sum(train_data.labels) / len(train_data.labels)
     stopper = EarlyStopping(patience, filename=MODEL_FILE,delta=0)
 
     # Define network
-    net = EmbedAttentionNet()
+    net = EmbedAttentionNet(cdr3a_wv = cdr3a_embedding, cdr3b_wv = cdr3b_embedding)
     net.to(device)
  
     optimizer = optim.Adam(net.parameters(), lr=lr,

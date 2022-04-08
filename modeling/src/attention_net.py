@@ -4,6 +4,7 @@ from torch import nn
 from torch.nn import init
 from torch.nn import functional as F
 import numpy as np
+from gensim.models import KeyedVectors
 
 class ContextLayer(nn.Module):
     def __init__(self, input_dim, hidden_dim=24):
@@ -382,19 +383,26 @@ class LSTMNet(nn.Module):
         return x
 
 class EmbedAttentionNet(nn.Module):
-    def __init__(self, hidden_lstm=24, hidden_attention=24, hidden_dense=64):
+    def __init__(
+        self,
+        cdr3a_wv, 
+        cdr3b_wv,
+        hidden_lstm=24, 
+        hidden_attention=24, 
+        hidden_dense=64, 
+        pep_embed_dim=20
+        ):
+
         super(EmbedAttentionNet, self).__init__()  
         self.hidden_lstm = hidden_lstm
 
-        self.pep_index = np.arange(13)
+        self.pep_index = np.arange(9)
         self.pep_len = len(self.pep_index)
-        self.pep_feat_dim= 20
 
-        self.cdr_feat_dim= 100
-        self.cdr3a_index = np.arange(13, 33)
+        self.cdr3a_index = np.arange(24, 39)
         self.cdr3a_len = len(self.cdr3a_index)
 
-        self.cdr3b_index = np.arange(33, 53)
+        self.cdr3b_index = np.arange(52, 69)
         self.cdr3b_len = len(self.cdr3b_index)
 
         self.tcra_index = np.arange(9, 125)
@@ -404,17 +412,26 @@ class EmbedAttentionNet(nn.Module):
         self.tcrb_len = len(self.tcrb_index)
 
         ########### LAYERS FOR PEP AND CDR3s #############
-        self.pep_lstm = nn.LSTM(input_size=self.pep_feat_dim,
+        cdr3a_wv = np.concatenate((cdr3a_wv.vectors, np.zeros((1,cdr3a_wv.vectors.shape[1]))), axis=0) # add padding token
+        self.cdr3a_embed = nn.Embedding.from_pretrained(torch.FloatTensor(cdr3a_wv), 
+        freeze=False, 
+        padding_idx=20)
+
+        cdr3b_wv = np.concatenate((cdr3b_wv.vectors, np.zeros((1,cdr3b_wv.vectors.shape[1]))), axis=0) # add padding token
+        self.cdr3b_embed = nn.Embedding.from_pretrained(torch.FloatTensor(cdr3b_wv), freeze=False, padding_idx=20)
+        self.pep_embed = nn.Embedding(21, pep_embed_dim, 20)
+
+        self.pep_lstm = nn.LSTM(input_size=pep_embed_dim,
                                  hidden_size=hidden_lstm,
                                  batch_first=True,
                                  bidirectional=True)
 
-        self.cdr3a_lstm = nn.LSTM(input_size=self.cdr_feat_dim,
+        self.cdr3a_lstm = nn.LSTM(input_size=cdr3a_wv.shape[1],
                                  hidden_size=hidden_lstm,
                                  batch_first=True,
                                  bidirectional=True)
 
-        self.cdr3b_lstm = nn.LSTM(input_size=self.cdr_feat_dim,
+        self.cdr3b_lstm = nn.LSTM(input_size=cdr3b_wv.shape[1],
                                  hidden_size=hidden_lstm,
                                  batch_first=True,
                                  bidirectional=True)
@@ -444,7 +461,7 @@ class EmbedAttentionNet(nn.Module):
     def _forward_seq_feat(self, 
                          x: torch.Tensor,
                          idxs: np.ndarray,
-                         embed_features: int,
+                         embed: nn.Module,
                          lstm_layer: nn.Module,
                          attention_layer_f: nn.Module,
                          attention_layer_r: nn.Module,
@@ -453,7 +470,8 @@ class EmbedAttentionNet(nn.Module):
         Takes a matrix and indexes to extract a specific sequence feature and runs it through the layers given
         """
 
-        embedding = x[:, idxs, :embed_features]
+        sequence = x[:,idxs].type(torch.long)
+        embedding = embed(sequence)
         embedding = self.dropout(embedding)
         lstm_out, _ = lstm_layer(embedding)
         lstm_out = lstm_out.view(lstm_out.shape[0], lstm_out.shape[1], 2, self.hidden_lstm)
@@ -466,26 +484,25 @@ class EmbedAttentionNet(nn.Module):
         return avg_hidden_rep_f, avg_hidden_rep_r
 
     def forward(self, x, return_attention=False):
-        x = torch.transpose(x, 1, 2)
-         # x dimensions (batch_size, seq_len, embedding)
+         # x dimensions (batch_size, seq_len)
         ########## FORWARD PEPTIDE AND CDR3S ##############
         hidden_pep_f, hidden_pep_r = self._forward_seq_feat(x, 
                                                             self.pep_index,
-                                                            self.pep_feat_dim, 
+                                                            self.pep_embed, 
                                                             self.pep_lstm, 
                                                             self.pep_attention_f, 
                                                             self.pep_attention_r,
                                                             return_attention=return_attention)
         hidden_cdr3a_f, hidden_cdr3a_r = self._forward_seq_feat(x, 
                                                                 self.cdr3a_index,
-                                                                self.cdr_feat_dim,
+                                                                self.cdr3a_embed,
                                                                 self.cdr3a_lstm, 
                                                                 self.cdr3a_attention_f,
                                                                 self.cdr3a_attention_r,
                                                                 return_attention=return_attention)
         hidden_cdr3b_f, hidden_cdr3b_r = self._forward_seq_feat(x, 
                                                                 self.cdr3b_index,
-                                                                self.cdr_feat_dim,
+                                                                self.cdr3b_embed,
                                                                 self.cdr3b_lstm, 
                                                                 self.cdr3b_attention_f,
                                                                 self.cdr3b_attention_r, 
