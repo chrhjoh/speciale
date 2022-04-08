@@ -102,6 +102,7 @@ attention_plot_tcrs <- function(df, anno){
 # Load Data ---------------------------------------------------------------
 data_tcrs <- read_csv('/Users/christianjohansen/Desktop/speciale/modeling/results/lstm_attention_partition5_tcrs_saved.csv')
 data_cdrs <- read_csv('/Users/christianjohansen/Desktop/speciale/modeling/results/lstm_attention_partition5_98_saved.csv')
+all_data <- read_csv('/Users/christianjohansen/Desktop/speciale/modeling/data/datasets/train_data_all.csv')
 # Wrangle Data -----------------------------------------
 
 cdr3b_data_f <- wrangle_feature(data_cdrs, 1, "cdr3b", "forward")
@@ -128,18 +129,20 @@ attention_plot_cdrs(cdr3a_data_r, 17)
 
 
 # Wrangle data for CDR3 length plot
-cdr_plot_data <- data_cdrs %>%
+all_cdrs <- all_data %>%
   select(cdr3a, cdr3b, label) %>%
-  pivot_longer(cols=c(cdr3a, cdr3b),
+  pivot_longer(cols = c(cdr3a, cdr3b),
                names_to = "type",
                values_to = "sequence") %>%
   mutate(cdr_len = str_length(sequence) %>% as_factor(),
          label = if_else(label==1, true = "Positive", false = "Negative") %>% as_factor())
 
 
+# Plots to show why the attention is so alike for observations on the cdr3b
+# Just a stratified count of the cdr lengths
 cdr_plot_data %>%
   filter(type == "cdr3b") %>%
-  ggplot(mapping = aes(x=cdr_len, fill=label))+
+  ggplot(mapping = aes(x = cdr_len, fill = label))+
   geom_bar()+
   facet_wrap(vars(label))+
   labs(x="CDR3b length")+

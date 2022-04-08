@@ -114,7 +114,7 @@ class TcrDataset(Dataset):
 class AttentionDataset(Dataset):
     def __init__(self, df, partitions, seq_features, encode_type="encode", shuffle=True):
         self.df = df[df["partition"].isin(partitions)]
-        self.labels = df.loc[df["partition"].isin(partitions), "binder"].values
+        self.labels = df.loc[df["partition"].isin(partitions), "label"].values
         self.ENCODE_PATH = "/Users/christianjohansen/Desktop/speciale/modeling/data/encoding"
         self.data = self.get_sequence_features(seq_features, encode_type)
         if shuffle:
@@ -149,24 +149,20 @@ class AttentionDataset(Dataset):
                 encoded = self.df[feat].apply(lambda seq: self.encode(seq, encoding, length))
                 
             elif encode_type == "tokenize":
-                encoded = self.df[feat].apply(lambda seq: self.tokenize(seq, length))
-
-            elif encode_type == "embed":
-                if feat == "cdr3a":
-                    encoding = KeyedVectors.load(os.path.join(self.ENCODE_PATH, "embeddings_cdr3a.wv"))
-                    encoded = self.df[feat].apply(lambda seq: self.encode(seq, encoding, length))
-                    
-                elif feat == "cdr3b":
-                    encoding = KeyedVectors.load(os.path.join(self.ENCODE_PATH, "embeddings_cdr3b.wv"))
-                    encoded = self.df[feat].apply(lambda seq: self.encode(seq, encoding, length))
-
+                ALL_AA = "ARNDCQEGHILKMFPSTWYV"
+                if feat == "cdr3b":
+                    embed_model = KeyedVectors.load(os.path.join(self.ENCODE_PATH, "embeddings_cdr3b.wv"))
+                    tokenizer = embed_model.key_to_index
+                elif feat == "cdr3a":
+                    embed_model = KeyedVectors.load(os.path.join(self.ENCODE_PATH, "embeddings_cdr3a.wv"))
+                    tokenizer = embed_model.key_to_index
                 else:
-                    encoding = self.read_encoding(os.path.join(self.ENCODE_PATH, "BLOSUM50"))
-                    encoded = self.df[feat].apply(lambda seq: self.encode(seq, encoding, length))
+                    tokenizer = dict(zip(ALL_AA, range(20)))
+                encoded = self.df[feat].apply(lambda seq: self.tokenize(seq, length, tokenizer))
 
             else:
                 print(encode_type, "not supported")
-                print("Use: encode, tokenize or embed")
+                print("Use: encode or tokenize")
                 sys.exit(1)
                 
             data.append(np.stack(encoded.to_list()))
@@ -174,15 +170,6 @@ class AttentionDataset(Dataset):
 
         if encode_type == "tokenize":
             return np.concatenate(data, axis=1)
-        elif encode_type == "embed":
-            EMBED_DIM = 100
-            # Have to pad the feature dimension since, some have dim = 20 and some have EMBED_DIM
-            pad_arrs = []
-            for arr in data:
-                pad_arr = np.zeros((arr.shape[0], EMBED_DIM, arr.shape[2]))
-                pad_arr[:arr.shape[0], :arr.shape[1], :arr.shape[2]] = arr
-                pad_arrs.append(pad_arr)
-            return np.concatenate(pad_arrs, axis=2)
         else:
             return np.concatenate(data, axis=2)
 
@@ -210,14 +197,14 @@ class AttentionDataset(Dataset):
             
             return encoding
     
-    def tokenize(self, seq, length):
-        tokenizer = dict(zip("ARNDCQEGHILKMFPSTWYV", range(1,21)))
+    def tokenize(self, seq, length, tokenizer):
+
         token_seq = []
         for i in range(length):
             if len(seq) > i:
                 token_seq.append(tokenizer[seq[i]])
             else:
-                token_seq.append(0)
+                token_seq.append(20)
         return np.array(token_seq)
 
 class Runner:
