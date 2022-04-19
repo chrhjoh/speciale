@@ -344,7 +344,7 @@ class Runner:
 
     
     def scores_to_file(self, filename):
-        df = self.loader.dataset.df[["pep", "origin"]]
+        df = self.loader.dataset.df.loc[:, ["ID", "pep", "origin", "partition"]]
         df["scores"] = self.y_score_batches
         df["labels"] = self.y_true_batches
         df.to_csv(filename,header=False, index=False, mode="a")

@@ -28,21 +28,23 @@ def main():
     ############ PARAMETERS ##############
     DIR = "/Users/christianjohansen/Desktop/speciale/modeling"
     DATA_DIR = os.path.join(DIR,"data")
-    DATA_FILE = os.path.join(DATA_DIR, "datasets/train_data_all_energy.csv")
+    DATA_FILE = os.path.join(DATA_DIR, "datasets/train_data_90neg_90pos_energy.csv")
     MODEL_FILE = os.path.join(DATA_DIR, "models/test_model.pt")
-    ATTENTION_FILE = os.path.join(DIR, 'results/cnn_att_partition5.csv')
-    ACTIVATION_FILE = os.path.join(DIR, 'results/cnn_act_partition5.csv')
+    #ATTENTION_FILE = os.path.join(DIR, 'results/cnn_att_partition5.csv')
+    #ACTIVATION_FILE = os.path.join(DIR, 'results/cnn_act_partition5.csv')
+    SCORE_FILE = os.path.join(DIR, 'results/cnn_90_cv_scores.csv')
 
-    CLI=False
+    CLI=True
     # Data parameters
     if CLI:
-        test_partition = [int(sys.argv[1]) % 5 + 1]
-        train_partition = [(int(sys.argv[1]) + i) % 5 + 1  for i in range(1,4)]
-        val_partition = [(int(sys.argv[1]) + 4) % 5 + 1]
+        PARTITIONS = set(range(1, 6))
+        TEST_PARTITION = [int(sys.argv[1])]
+        VAL_PARTITION = [int(sys.argv[2])]
+        TRAIN_PARTITION = list(PARTITIONS.difference(VAL_PARTITION, TEST_PARTITION))
     else:   
-        train_partition = [1,2,3]
-        val_partition = [4]
-        test_partition = [5]
+        TRAIN_PARTITION = [1,2,3]
+        VAL_PARTITION = [4]
+        TEST_PARTITION = [5]
 
     sequences = ["pep", 
                  "cdr1a", "cdr2a", "cdr3a",
@@ -75,9 +77,9 @@ def main():
     print("Using device:", device)
 
     data = read_data(DATA_FILE)
-    train_data = TcrDataset(data, train_partition, sequences)
-    val_data = TcrDataset(data, val_partition, sequences)
-    test_data = TcrDataset(data, test_partition, sequences)
+    train_data = TcrDataset(data, TRAIN_PARTITION, sequences)
+    val_data = TcrDataset(data, VAL_PARTITION, sequences)
+    test_data = TcrDataset(data, TEST_PARTITION, sequences)
 
     # Shuffle data randomly is needed
     train_data.shuffle_data()
@@ -134,21 +136,22 @@ def main():
 
     ################ EVALUATE ##################
     #Plots of training epochs
-    epoch = np.arange(1, len(train_loss) + 1)
-    plt.figure()
-    plt.plot(epoch, train_loss, "r", epoch, val_loss, "b", linewidth=3)
-    plt.vlines(stopper.best_epoch, ymin=0, ymax=0.3, colors="black", linestyles='dashed')
-    plt.legend(["Train Loss", "Validation Loss", "Best Epoch"])
-    plt.xlabel("Epoch"), plt.ylabel("Loss")
-    plt.show()
+    if not CLI:
+        epoch = np.arange(1, len(train_loss) + 1)
+        plt.figure()
+        plt.plot(epoch, train_loss, "r", epoch, val_loss, "b", linewidth=3)
+        plt.vlines(stopper.best_epoch, ymin=0, ymax=0.3, colors="black", linestyles='dashed')
+        plt.legend(["Train Loss", "Validation Loss", "Best Epoch"])
+        plt.xlabel("Epoch"), plt.ylabel("Loss")
+        plt.show()
 
-    epoch = np.arange(1, len(train_loss) + 1)
-    plt.figure()
-    plt.plot(epoch, train_auc, "r", epoch, val_auc, "b", linewidth=3)
-    plt.vlines(stopper.best_epoch, ymin=0, ymax=1, colors="black", linestyles='dashed')
-    plt.legend(["Train AUC", "Validation AUC", "Best Epoch"])
-    plt.xlabel("Epoch"), plt.ylabel("AUC")
-    plt.show()
+        epoch = np.arange(1, len(train_loss) + 1)
+        plt.figure()
+        plt.plot(epoch, train_auc, "r", epoch, val_auc, "b", linewidth=3)
+        plt.vlines(stopper.best_epoch, ymin=0, ymax=1, colors="black", linestyles='dashed')
+        plt.legend(["Train AUC", "Validation AUC", "Best Epoch"])
+        plt.xlabel("Epoch"), plt.ylabel("AUC")
+        plt.show()
 
     final_model = CdrCNN(local_features, global_features, use_global_features,
                          cnn_channels=cnn_channels, dropout=dropout, cnn_kernel_size=cnn_kernel,
@@ -170,24 +173,26 @@ def main():
     val_runner.run_epoch()
     test_runner.run_epoch()
 
-    print("Evaluation on Training Data:")
-    train_runner.evaluate_model()
-    plt.title("Training Data")
-    plt.show()
+    if not CLI:
+        print("Evaluation on Training Data:")
+        train_runner.evaluate_model()
+        plt.title("Training Data")
+        plt.show()
 
-    print("Evaluation on Validation Data:")
-    val_runner.evaluate_model()
-    plt.title("Evaluation Data")
-    plt.show()
+        print("Evaluation on Validation Data:")
+        val_runner.evaluate_model()
+        plt.title("Evaluation Data")
+        plt.show()
 
-    print("Evaluation on Test Data:")
-    test_runner.evaluate_model()
-    plt.title("Test Data")
-    plt.show()
+        print("Evaluation on Test Data:")
+        test_runner.evaluate_model()
+        plt.title("Test Data")
+        plt.show()
 
-    test_runner.save_attention_weights(ATTENTION_FILE, ACTIVATION_FILE)
-    print("Attention results saved at:", ATTENTION_FILE)
+    #test_runner.save_attention_weights(ATTENTION_FILE, ACTIVATION_FILE)
+    #print("Attention results saved at:", ATTENTION_FILE)
     print("Final model saved at:", MODEL_FILE)
+    test_runner.scores_to_file(SCORE_FILE)
 
 if __name__ == "__main__":
     main() 
