@@ -60,10 +60,10 @@ def main():
     outputs = []
     for i, file in enumerate(RES_FILES):
         df = do_file(file)
-        df["label"] = labels[i]
+        df["redundancy"] = labels[i]
         outputs.append(df)
     df = pd.concat(outputs)
-    df = df.set_index([df.index, "label"])
+    df = df.set_index([df.index, "redundancy"])
 
     df.to_csv(OUT_FILE)
 if __name__ == "__main__":

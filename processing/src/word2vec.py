@@ -1,6 +1,7 @@
 import pandas as pd
 from gensim.models import Word2Vec
 import os
+from Bio import SeqIO
 
 def create_words(seqs, wordsize=1):
     """
@@ -14,22 +15,39 @@ def create_words(seqs, wordsize=1):
         seq_list.append(word_list)
     return seq_list
 
+def load_csv_file(filename, feature):
+    df = pd.read_csv(filename)
+    return df[feature].to_list()
+
+def load_fasta_file(filename, n=20000):
+    """
+    Get n first sequences from the supplied fastafile
+    """
+    sequences = []
+    for i, record in enumerate(SeqIO.parse(filename, 'fasta')):
+        if i == n:
+            break
+        sequences.append(str(record.seq))
+    return sequences
+
+
+
 
 def main():
     FEATURE = "cdr3a"
     DIR = os.path.join("/Users/christianjohansen/Desktop/speciale/processing")
     DATA_FILE = os.path.join(DIR, "out/10x_200000sample.csv")
-    EMBEDDING_FILE = os.path.join(DIR, "out/embeddings_cdr3a.wv")
-
-    df = pd.read_csv(DATA_FILE)
-    cdr = df[FEATURE].to_list()
-    cdr_words = create_words(cdr, wordsize=1)
-    model = Word2Vec(cdr_words,
-                     vector_size=100,
-                     window=20,
+    FASTA_FILE = os.path.join(DIR, "data/raw/uniprot_sprot.fasta")
+    EMBEDDING_FILE = os.path.join(DIR, "out/embeddings_proteins.wv")
+    #sequences = load_csv_dat(filename=DATA_FILE, feature=FEATURE)
+    sequences = load_fasta_file(FASTA_FILE, 1000000)
+    words = create_words(sequences, wordsize=1)
+    model = Word2Vec(words,
+                     vector_size=20,
+                     window=11,
                      min_count=1,
                      workers=4,
-                     epochs=500)
+                     epochs=20)
     print()
     print(model.wv.most_similar("A"))
     print()
