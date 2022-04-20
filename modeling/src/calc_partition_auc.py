@@ -7,7 +7,7 @@ def do_file(filename):
     """
     Calculates AUC per peptide for the 10 most present peptides
     """
-    result = pd.read_csv(filename, names=["peptide", "origin", "score", "label"])
+    result = pd.read_csv(filename, names=["ID", "peptide", "origin", "partition", "score", "label"])
     # subset to 10 most frequent peptides
     result = result[result["peptide"].isin(result["peptide"].value_counts(ascending=False).head(10).index)]
 
@@ -45,11 +45,11 @@ def do_file(filename):
 def main():
     DIR = "/Users/christianjohansen/Desktop/speciale/modeling"
     RES_DIR = os.path.join(DIR, "results")
-    RES_FILES = [os.path.join(RES_DIR, "cnn_90_scores.csv"),
-                 os.path.join(RES_DIR, "cnn_95_scores.csv"),
-                 os.path.join(RES_DIR, "cnn_98_scores.csv"),
-                  os.path.join(RES_DIR, "cnn_all_scores.csv")]
-    OUT_FILE = os.path.join(RES_DIR, "cnn_cv_auc.csv")
+    RES_FILES = [os.path.join(RES_DIR, "lstm_90_cv_scores.csv"),
+                 os.path.join(RES_DIR, "lstm_95_cv_scores.csv"),
+                 os.path.join(RES_DIR, "lstm_98_cv_scores.csv"),
+                  os.path.join(RES_DIR, "lstm_all_cv_scores.csv")]
+    OUT_FILE = os.path.join(RES_DIR, "lstm_cv_auc.csv")
     labels = ["0.9",
               "0.95",
               "0.98",

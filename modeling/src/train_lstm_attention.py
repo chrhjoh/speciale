@@ -21,7 +21,7 @@ def main():
     DATA_DIR = os.path.join(DIR,"data")
     DATA_FILE = os.path.join(DATA_DIR, "datasets/train_data_all.csv")
     MODEL_FILE = os.path.join(DATA_DIR, "models/lstm_cdr_model.pt")
-    SCORE_FILE = os.path.join(DIR, 'results/lstm_all_cv_scores.csv')
+    SCORE_FILE = os.path.join(DIR, 'results/attlstm_all_cv_scores.csv')
 
     CLI = True
     # Data parameters
@@ -75,7 +75,7 @@ def main():
     stopper = EarlyStopping(PATIENCE, filename=MODEL_FILE,delta=0)
 
     # Define network
-    net = LSTMNet()
+    net = AttentionNet()
     net.to(device)
  
     optimizer = optim.Adam(net.parameters(), lr=LR,

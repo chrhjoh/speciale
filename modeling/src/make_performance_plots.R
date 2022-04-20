@@ -17,8 +17,8 @@ auc_plot <- function(data, auc_col, auc_lab){
   Make a grouped bar plot of the auc_col. The groups are different redundancy levels.
   "
   data %>%
-    mutate(label = as_factor(label)) %>%
-    ggplot(mapping = aes(x = fct_reorder(peptide, desc(count)), y = !!sym(auc_col), fill = label))+
+    mutate(redundancy = as_factor(redundancy)) %>%
+    ggplot(mapping = aes(x = fct_reorder(peptide, desc(count)), y = !!sym(auc_col), fill = redundancy))+
     geom_bar(stat = "identity", position = "dodge")+
     geom_text(aes(label = round(!!sym(auc_col), 2)), 
               position = position_dodge(width = 0.9),

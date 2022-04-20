@@ -7,7 +7,7 @@ library(docstring)
 
 # Functions for wrangling and plotting ------------------------------------
 
-wrangle_feature <- function(data, labels, feature, direction){
+wrangle_feature <- function(data, origins, feature, direction){
   #' Takes a tibble and wrangles it.
   #' Subset columns to only contain meta data and desired features
   #' Either CDR3a or CDR3b for a given direction.
@@ -24,7 +24,7 @@ wrangle_feature <- function(data, labels, feature, direction){
     inner_join(meta_data, by = "ID") %>%
     
     add_count(pep, name = "pep_count") %>%
-    filter(label == labels) %>%
+    filter(str_starts(origin, origins)) %>%
     filter(pep_count > 30) %>%
     
     mutate(sort_len = !!as.name(feature) %>% str_length()) %>%
@@ -105,12 +105,13 @@ data_cdrs <- read_csv('/Users/christianjohansen/Desktop/speciale/modeling/result
 all_data <- read_csv('/Users/christianjohansen/Desktop/speciale/modeling/data/datasets/train_data_all.csv')
 # Wrangle Data -----------------------------------------
 
-cdr3b_data_f <- wrangle_feature(data_cdrs, 1, "cdr3b", "forward")
-cdr3a_data_f <- wrangle_feature(data_cdrs, 1, "cdr3a", "forward")
-cdr3a_data_r <- wrangle_feature(data_cdrs, 1, "cdr3a", "reverse")
+cdr3b_data_f <- wrangle_feature(data_cdrs, "positive", "cdr3b", "forward")
+cdr3b_data_f_neg <- wrangle_feature(data_cdrs, "10x", "cdr3b", "forward")
+cdr3a_data_f <- wrangle_feature(data_cdrs, "positive", "cdr3a", "forward")
+cdr3a_data_r <- wrangle_feature(data_cdrs, "positive", "cdr3a", "reverse")
 
-tcrb_data_f <- wrangle_feature(data_tcrs, 1, "cdr3b", "forward")
-tcra_data_f <- wrangle_feature(data_tcrs, 1, "cdr3a", "forward")
+tcrb_data_f <- wrangle_feature(data_tcrs, "positive", "cdr3b", "forward")
+tcra_data_f <- wrangle_feature(data_tcrs, "positive", "cdr3a", "forward")
 
 
 # Plot Data ---------------------------------------------------------------
@@ -126,6 +127,9 @@ attention_plot_tcrs(tcrb_data_f, anno_beta)
 attention_plot_cdrs(cdr3a_data_f, 15)
 attention_plot_cdrs(cdr3b_data_f, 17)
 attention_plot_cdrs(cdr3a_data_r, 17)
+
+attention_plot_cdrs(cdr3b_data_f_neg, 17)
+
 
 
 # Wrangle data for CDR3 length plot
