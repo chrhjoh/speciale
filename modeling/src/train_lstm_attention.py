@@ -17,13 +17,13 @@ sns.set_theme(style="ticks", rc=custom_params, palette="pastel")
 def main():
 
     ############ PARAMETERS ##############
-    DIR = "/Users/christianjohansen/Desktop/speciale/modeling"
+    DIR = os.path.join("C:\\Users\\chris\\Documents\\Code_stuff\\speciale", "modeling")
     DATA_DIR = os.path.join(DIR,"data")
-    DATA_FILE = os.path.join(DATA_DIR, "datasets/train_data_all.csv")
-    MODEL_FILE = os.path.join(DATA_DIR, "models/lstm_cdr_model.pt")
-    SCORE_FILE = os.path.join(DIR, 'results/attlstm_all_cv_scores.csv')
+    DATA_FILE = os.path.join(DATA_DIR, "datasets", "train_data_90neg_90pos.csv")
+    MODEL_FILE = os.path.join(DATA_DIR, "models", "lstm_cdr_model.pt")
+    SCORE_FILE = os.path.join(DIR, "results", "embattlstm_90_cv_scores.csv")
 
-    CLI = True
+    CLI = False
     # Data parameters
     if CLI:
         PARTITIONS = set(range(1, 6))
@@ -39,9 +39,9 @@ def main():
     sequences = ["pep", 
                  "cdr1a", "cdr2a", "cdr3a",
                  "cdr1b", "cdr2b", "cdr3b"]
-    ENCODING = "encode"
-    cdr3a_embedding = KeyedVectors.load(os.path.join(DATA_DIR, "encoding/embeddings_cdr3a.wv"))
-    cdr3b_embedding = KeyedVectors.load(os.path.join(DATA_DIR, "encoding/embeddings_cdr3b.wv"))
+    ENCODING = "tokenize"
+    cdr3a_embedding = KeyedVectors.load(os.path.join(DATA_DIR, "encoding", "embeddings_cdr3a.wv"))
+    cdr3b_embedding = KeyedVectors.load(os.path.join(DATA_DIR, "encoding", "embeddings_cdr3b.wv"))
 
     # Loader parameters
     BATCH_SIZE = 64
@@ -75,7 +75,7 @@ def main():
     stopper = EarlyStopping(PATIENCE, filename=MODEL_FILE,delta=0)
 
     # Define network
-    net = AttentionNet()
+    net = EmbedAttentionNet(cdr3a_embedding, cdr3b_embedding)
     net.to(device)
  
     optimizer = optim.Adam(net.parameters(), lr=LR,
