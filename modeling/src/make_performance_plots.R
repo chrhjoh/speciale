@@ -9,12 +9,7 @@ auc_per_peptide_cnn <- read_csv("/Users/christianjohansen/Desktop/speciale/model
 auc_per_peptide_lstm <- read_csv("/Users/christianjohansen/Desktop/speciale/modeling/results/lstm_cv_auc.csv")
 auc_per_peptide_attlstm <- read_csv("/Users/christianjohansen/Desktop/speciale/modeling/results/attlstm_cv_auc.csv")
 auc_per_peptide_embattlstm <- read_csv("/Users/christianjohansen/Desktop/speciale/modeling/results/embattlstm_cv_auc.csv")
-auc_per_tcr <- read_csv("/Users/christianjohansen/Desktop/speciale/modeling/results/lstm_positive_allpep_auc.csv")
-scores_data <- read_csv("/Users/christianjohansen/Desktop/speciale/modeling/results/lstm_attention_scores.csv",
-                        col_names = c("ID", "peptide", "origin", "score", "label"))
 
-subsample_aucs <- read_csv("/Users/christianjohansen/Desktop/speciale/modeling/results/subsampling/attlstm_subsample_auc.csv")
-subsample_pre_auc <- read_csv("/Users/christianjohansen/Desktop/speciale/modeling/results/subsampling/attlstm_GIL_pretrain_subsample_auc.csv")
 
 # Function for plotting
 auc_plot <- function(data, auc_col, auc_lab){
@@ -83,18 +78,38 @@ bind_rows(auc_per_peptide_cnn,
   ggplot(mapping = aes(x = redundancy, y = auc, color = model))+
   geom_line()
 
+
+
+# subsample AUCs ----------------------------------------------------------
+
+subsample_auc <- read_csv("/Users/christianjohansen/Desktop/speciale/modeling/results/subsampling/attlstm_subsample_auc.csv")
+subsample_pre100_auc <- read_csv("/Users/christianjohansen/Desktop/speciale/modeling/results/subsampling/attlstm_GILpretrain_subsample_auc.csv")
+subsample_pre50_auc <- read_csv("/Users/christianjohansen/Desktop/speciale/modeling/results/subsampling/attlstm_GIL50pretrain_subsample_auc.csv")
+subsample_pre20_auc <- read_csv("/Users/christianjohansen/Desktop/speciale/modeling/results/subsampling/attlstm_GIL20pretrain_subsample_auc.csv")
+subsample_pre10_auc <- read_csv("/Users/christianjohansen/Desktop/speciale/modeling/results/subsampling/attlstm_GIL10pretrain_subsample_auc.csv")
+subsample_pre5_auc <- read_csv("/Users/christianjohansen/Desktop/speciale/modeling/results/subsampling/attlstm_GIL5pretrain_subsample_auc.csv")
+
 # For now just quickly display subsample curve for the total performance
-subsample_aucs <- subsample_aucs %>% mutate(pretrain = "None")
-subsample_pre_auc <- subsample_pre_auc %>% mutate(pretrain = "Pretrained")
-bind_rows(subsample_aucs, subsample_pre_auc) %>%
-  filter(peptide == "GLCTLVAML") %>%
-  ggplot(mapping = aes(x = redundancy, y = auc, color=pretrain))+
+subsample_auc <- subsample_auc %>% mutate(pretrain = 0)
+subsample_pre100_auc <- subsample_pre100_auc %>% mutate(pretrain = 1)
+subsample_pre50_auc <- subsample_pre50_auc %>% mutate(pretrain = 0.5)
+subsample_pre20_auc <- subsample_pre20_auc %>% mutate(pretrain = 0.2)
+subsample_pre10_auc <- subsample_pre10_auc %>% mutate(pretrain = 0.1)
+subsample_pre5_auc <- subsample_pre5_auc %>% mutate(pretrain = 0.05)
+
+bind_rows(subsample_auc, subsample_pre100_auc, subsample_pre50_auc,
+          subsample_pre20_auc, subsample_pre10_auc, subsample_pre5_auc) %>%
+  mutate(pretrain = as_factor(pretrain),
+         peptide = factor(peptide, levels = c("total", "GLCTLVAML", "NLVPMVATV", "FLYALALLL"))) %>%
+  filter(peptide != "LLFGYPVYV" & peptide != "RTLNAWVKV") %>%
+  ggplot(mapping = aes(x = redundancy, y = auc, color = pretrain))+
   geom_line()+
-  labs(x = "Sample Fraction")
-
-
+  facet_wrap(~peptide)+
+  labs(x = "Sample Fraction", color="GIL pretraining fraction")+
+  guides(color = guide_legend(reverse = TRUE))
 
 # AUC of positive tcrs against swapped negatives --------------------------
+auc_per_tcr <- read_csv("/Users/christianjohansen/Desktop/speciale/modeling/results/lstm_positive_allpep_auc.csv")
 
 auc_per_tcr <- auc_per_tcr %>%
   group_by(peptide) %>%
@@ -120,6 +135,9 @@ auc_per_tcr %>%
 # Decides that for GLC or GIL whether the model believes this is this peptide or not. For other peptides not so much
 
 # plots of score distributions per peptide and origin ---------------------
+
+scores_data <- read_csv("/Users/christianjohansen/Desktop/speciale/modeling/results/lstm_attention_scores.csv",
+                        col_names = c("ID", "peptide", "origin", "score", "label"))
 
 scores_data <- scores_data %>%
   group_by(peptide) %>%

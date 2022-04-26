@@ -19,8 +19,8 @@ def main():
     ############ PARAMETERS ##############
     DIR = os.path.join("/Users/christianjohansen/Desktop/speciale/modeling")
     DATA_DIR = os.path.join(DIR,"data")
-    DATA_FILE = os.path.join(DATA_DIR, "datasets", "train_data_.csv")
-    MODEL_FILE = os.path.join(DATA_DIR, "models", "GIL50_attlstm_pretrained.pt")
+    DATA_FILE = os.path.join(DATA_DIR, "datasets", "train_data_subsample10.csv")
+    MODEL_FILE = os.path.join(DATA_DIR, "models", "GIL10_attlstm_pretrained.pt")
 
     CLI = False
     # Data parameters

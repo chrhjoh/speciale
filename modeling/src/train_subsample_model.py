@@ -23,8 +23,8 @@ def main():
     #TRAIN_FILE = os.path.join(DATA_DIR, "datasets", f"train_data_all.csv")
     TEST_FILE = os.path.join(DATA_DIR, "datasets", "train_data_all.csv")
     MODEL_FILE = os.path.join(DATA_DIR, "models", "lstm_cdr_model.pt")
-    SCORE_FILE = os.path.join(DIR, "results", f"subsampling/attlstm_GILpretrain_subsample{sample}.csv")
-    PRETRAIN_MODEL = os.path.join(DATA_DIR, "models", "GIL_attlstm_pretrained.pt")
+    SCORE_FILE = os.path.join(DIR, "results", f"subsampling/attlstm_GIL50pretrain_subsample{sample}.csv")
+    PRETRAIN_MODEL = os.path.join(DATA_DIR, "models", "GIL50_attlstm_pretrained.pt")
 
     START_FROM_PRETRAINED = True
 
