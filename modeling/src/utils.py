@@ -115,7 +115,7 @@ class AttentionDataset(Dataset):
     def __init__(self, df, partitions, seq_features, encode_type="encode", shuffle=True):
         self.df = df[df["partition"].isin(partitions)]
         self.labels = df.loc[df["partition"].isin(partitions), "label"].values
-        self.ENCODE_PATH = os.path.join("C:\\Users\\chris\\Documents\\Code_stuff\\speciale", "modeling", "data", "encoding")
+        self.ENCODE_PATH = os.path.join("/Users/christianjohansen/Desktop/speciale/modeling/", "data", "encoding")
         self.data = self.get_sequence_features(seq_features, encode_type)
         if shuffle:
             self.shuffle_data()
@@ -141,9 +141,8 @@ class AttentionDataset(Dataset):
         or get a high dimensional trained embedding from word2vec.
         """
         data = []
-        self.lengths = []
-        for feat in seq_features:
-            length = self.df[feat].str.len().max()
+        self.lengths = [9, 7, 8, 15, 6, 7, 17]
+        for length, feat in zip(self.lengths, seq_features):
             if encode_type == "encode":
                 encoding = self.read_encoding(os.path.join(self.ENCODE_PATH, "BLOSUM50"))
                 encoded = self.df[feat].apply(lambda seq: self.encode(seq, encoding, length))

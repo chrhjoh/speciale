@@ -9,7 +9,7 @@ def do_file(filename):
     """
     result = pd.read_csv(filename, names=["ID", "peptide", "origin", "partition", "score", "label"])
     # subset to 10 most frequent peptides
-    result = result[result["peptide"].isin(result["peptide"].value_counts(ascending=False).head(10).index)]
+    result = result[result["peptide"].isin(result["peptide"].value_counts(ascending=False).head(5).index)]
 
     auc_df = result.groupby(["peptide"]).apply(lambda x: pd.Series({
                                         "auc" : metrics.roc_auc_score(x["label"], x["score"]),
@@ -44,18 +44,25 @@ def do_file(filename):
 
 def main():
     DIR = "/Users/christianjohansen/Desktop/speciale/modeling"
-    RES_DIR = os.path.join(DIR, "results")
-    RES_FILES = [os.path.join(RES_DIR, "lstm_90_cv_scores.csv"),
-                 os.path.join(RES_DIR, "lstm_95_cv_scores.csv"),
-                 os.path.join(RES_DIR, "lstm_98_cv_scores.csv"),
-                  os.path.join(RES_DIR, "lstm_all_cv_scores.csv")]
-    OUT_FILE = os.path.join(RES_DIR, "lstm_cv_auc.csv")
-    labels = ["0.9",
-              "0.95",
-              "0.98",
+    RES_DIR = os.path.join(DIR, "results/subsampling")
+    PREFIX = "attlstm_subsample"
+    RES_FILES = [os.path.join(RES_DIR, PREFIX+"5.csv"),
+                 os.path.join(RES_DIR, PREFIX+"10.csv"),
+                 os.path.join(RES_DIR, PREFIX+"20.csv"),
+                  os.path.join(RES_DIR, PREFIX+"40.csv"),
+                  os.path.join(RES_DIR, PREFIX+"50.csv"),
+                  os.path.join(RES_DIR, PREFIX+"60.csv"),
+                  os.path.join(RES_DIR, PREFIX+"80.csv"),
+                  os.path.join(RES_DIR, PREFIX+"100.csv")]
+    OUT_FILE = os.path.join(RES_DIR, "attlstm_subsample_auc.csv")
+    labels = ["0.05",
+              "0.1",
+              "0.2",
+              "0.4",
+              "0.5",
+              "0.6",
+              "0.8",
               "1.0"]
-    
-    
 
     outputs = []
     for i, file in enumerate(RES_FILES):
