@@ -17,9 +17,9 @@ sns.set_theme(style="ticks", rc=custom_params, palette="pastel")
 def main():
 
     ############ PARAMETERS ##############
-    DIR = os.path.join("C:\\Users\\chris\\Documents\\Code_stuff\\speciale", "modeling")
+    DIR = os.path.join("/Users/christianjohansen/Desktop/speciale/modeling")
     DATA_DIR = os.path.join(DIR,"data")
-    DATA_FILE = os.path.join(DATA_DIR, "datasets", "train_data_90neg_90pos.csv")
+    DATA_FILE = os.path.join(DATA_DIR, "datasets", "train_data_all.csv")
     MODEL_FILE = os.path.join(DATA_DIR, "models", "lstm_cdr_model.pt")
     SCORE_FILE = os.path.join(DIR, "results", "embattlstm_90_cv_scores.csv")
 
@@ -39,7 +39,7 @@ def main():
     sequences = ["pep", 
                  "cdr1a", "cdr2a", "cdr3a",
                  "cdr1b", "cdr2b", "cdr3b"]
-    ENCODING = "tokenize"
+    ENCODING = "encode"
     cdr3a_embedding = KeyedVectors.load(os.path.join(DATA_DIR, "encoding", "embeddings_cdr3a.wv"))
     cdr3b_embedding = KeyedVectors.load(os.path.join(DATA_DIR, "encoding", "embeddings_cdr3b.wv"))
 
@@ -75,7 +75,7 @@ def main():
     stopper = EarlyStopping(PATIENCE, filename=MODEL_FILE,delta=0)
 
     # Define network
-    net = EmbedAttentionNet(cdr3a_embedding, cdr3b_embedding)
+    net = LSTMNet()
     net.to(device)
  
     optimizer = optim.Adam(net.parameters(), lr=LR,
@@ -110,23 +110,23 @@ def main():
         if stopper.stop:
             break
 
-    # ################ EVALUATE ##################
-    # #Plots of training epochs
-    # epoch = np.arange(1, len(train_loss) + 1)
-    # plt.figure()
-    # plt.plot(epoch, train_loss, "r", epoch, val_loss, "b", linewidth=3)
-    # plt.vlines(stopper.best_epoch, ymin=0, ymax=0.3, colors="black", linestyles='dashed')
-    # plt.legend(["Train Loss", "Validation Loss", "Best Epoch"])
-    # plt.xlabel("Epoch"), plt.ylabel("Loss")
-    # plt.show()
+    ################ EVALUATE ##################
+    #Plots of training epochs
+    epoch = np.arange(1, len(train_loss) + 1)
+    plt.figure()
+    plt.plot(epoch, train_loss, "r", epoch, val_loss, "b", linewidth=3)
+    plt.vlines(stopper.best_epoch, ymin=0, ymax=0.3, colors="black", linestyles='dashed')
+    plt.legend(["Train Loss", "Validation Loss", "Best Epoch"])
+    plt.xlabel("Epoch"), plt.ylabel("Loss")
+    plt.show()
 
-    # epoch = np.arange(1, len(train_loss) + 1)
-    # plt.figure()
-    # plt.plot(epoch, train_auc, "r", epoch, val_auc, "b", linewidth=3)
-    # plt.vlines(stopper.best_epoch, ymin=0, ymax=1, colors="black", linestyles='dashed')
-    # plt.legend(["Train AUC", "Validation AUC", "Best Epoch"])
-    # plt.xlabel("Epoch"), plt.ylabel("AUC")
-    # plt.show()
+    epoch = np.arange(1, len(train_loss) + 1)
+    plt.figure()
+    plt.plot(epoch, train_auc, "r", epoch, val_auc, "b", linewidth=3)
+    plt.vlines(stopper.best_epoch, ymin=0, ymax=1, colors="black", linestyles='dashed')
+    plt.legend(["Train AUC", "Validation AUC", "Best Epoch"])
+    plt.xlabel("Epoch"), plt.ylabel("AUC")
+    plt.show()
 
     net.load_state_dict(torch.load(MODEL_FILE))
 
@@ -143,20 +143,20 @@ def main():
     val_runner.run_epoch()
     test_runner.run_epoch()
 
-    # print("Evaluation on Training Data:")
-    # train_runner.evaluate_model()
-    # plt.title("Training Data")
-    # plt.show()
+    print("Evaluation on Training Data:")
+    train_runner.evaluate_model()
+    plt.title("Training Data")
+    plt.show()
 
-    # print("Evaluation on Validation Data:")
-    # val_runner.evaluate_model()
-    # plt.title("Evaluation Data")
-    # plt.show()
+    print("Evaluation on Validation Data:")
+    val_runner.evaluate_model()
+    plt.title("Evaluation Data")
+    plt.show()
 
-    # print("Evaluation on Test Data:")
-    # test_runner.evaluate_model()
-    # plt.title("Test Data")
-    # plt.show()
+    print("Evaluation on Test Data:")
+    test_runner.evaluate_model()
+    plt.title("Test Data")
+    plt.show()
     test_runner.scores_to_file(SCORE_FILE)
 
     

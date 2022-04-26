@@ -1,15 +1,20 @@
-rm(list = ls())
+rm(list =ls())
 library(tidyverse)
 library(rlang)
 library(ggridges)
 
 
 # Load Data ---------------------------------------------------------------
-cnn_pep_auc <- read_csv("/Users/christianjohansen/Desktop/speciale/modeling/results/cnn_cv_auc.csv")
-lstm_tcr_auc <- read_csv("/Users/christianjohansen/Desktop/speciale/modeling/results/lstm_positive_allpep_auc.csv")
+auc_per_peptide_cnn <- read_csv("/Users/christianjohansen/Desktop/speciale/modeling/results/cnn_cv_auc.csv")
+auc_per_peptide_lstm <- read_csv("/Users/christianjohansen/Desktop/speciale/modeling/results/lstm_cv_auc.csv")
+auc_per_peptide_attlstm <- read_csv("/Users/christianjohansen/Desktop/speciale/modeling/results/attlstm_cv_auc.csv")
+auc_per_peptide_embattlstm <- read_csv("/Users/christianjohansen/Desktop/speciale/modeling/results/embattlstm_cv_auc.csv")
+auc_per_tcr <- read_csv("/Users/christianjohansen/Desktop/speciale/modeling/results/lstm_positive_allpep_auc.csv")
 scores_data <- read_csv("/Users/christianjohansen/Desktop/speciale/modeling/results/lstm_attention_scores.csv",
                         col_names = c("ID", "peptide", "origin", "score", "label"))
 
+subsample_aucs <- read_csv("/Users/christianjohansen/Desktop/speciale/modeling/results/subsampling/attlstm_subsample_auc.csv")
+subsample_pre_auc <- read_csv("/Users/christianjohansen/Desktop/speciale/modeling/results/subsampling/attlstm_GIL_pretrain_subsample_auc.csv")
 
 # Function for plotting
 auc_plot <- function(data, auc_col, auc_lab){
@@ -33,39 +38,86 @@ auc_plot <- function(data, auc_col, auc_lab){
   
 }
 
+auc_line_plot <- function(data, auc_col, auc_lab){
+  "
+  Make a grouped bar plot of the auc_col. The groups are different redundancy levels.
+  "
+  data %>%
+    ggplot(mapping = aes(x = redundancy, y = !!sym(auc_col), color = peptide))+
+    geom_line()+
+    labs(fill = "Redundancy", y = auc_lab, x = "")+
+    guides(fill = guide_legend(reverse = TRUE))+
+    theme_bw()+
+    theme(axis.text.x = element_text(angle = 90))+
+    scale_y_continuous(breaks = scales::pretty_breaks(n = 10))
+}
+
 
 # AUC bar plots -----------------------------------------------------------
-auc_plot(cnn_pep_auc, auc_col = "auc", auc_lab = "AUC")
-auc_plot(cnn_pep_auc, auc_col = "auc_0.1", auc_lab = "AUC 0.1")
-auc_plot(cnn_pep_auc, auc_col = "auc_swapped", auc_lab = "AUC Swapped")
-auc_plot(cnn_pep_auc, auc_col = "auc_swapped_0.1", auc_lab = "AUC Swapped 0.1")
-auc_plot(cnn_pep_auc, auc_col = "auc_10x", auc_lab = "AUC 10x")
-auc_plot(cnn_pep_auc, auc_col = "auc_10x_0.1", auc_lab = "AUC 10x 0.1")
+auc_plot(auc_per_peptide, auc_col = "auc", auc_lab = "AUC")
+auc_plot(auc_per_peptide, auc_col = "auc_0.1", auc_lab = "AUC 0.1")
+auc_plot(auc_per_peptide, auc_col = "auc_swapped", auc_lab = "AUC Swapped")
+auc_plot(auc_per_peptide, auc_col = "auc_swapped_0.1", auc_lab = "AUC Swapped 0.1")
+auc_plot(auc_per_peptide, auc_col = "auc_10x", auc_lab = "AUC 10x")
+auc_plot(auc_per_peptide, auc_col = "auc_10x_0.1", auc_lab = "AUC 10x 0.1")
+
+
+# AUC plot of total performance for all partitions ------------------------
+auc_per_peptide_cnn <- auc_per_peptide_cnn %>% mutate(model = "CNN")
+auc_per_peptide_lstm <- auc_per_peptide_lstm %>% mutate(model = "LSTM")
+auc_per_peptide_attlstm <- auc_per_peptide_attlstm %>% mutate(model = "Attention LSTM")
+auc_per_peptide_embattlstm <- auc_per_peptide_embattlstm %>% mutate(model = "Embedded Attention LSTM")
+
+# Have to combine all the total results for this, 
+# I have just added the baseline results manually
+bind_rows(auc_per_peptide_cnn,
+            auc_per_peptide_lstm,
+            auc_per_peptide_attlstm,
+            auc_per_peptide_embattlstm
+            ) %>%
+  filter(peptide == "total") %>%
+  select(auc, redundancy, model) %>%
+  bind_rows(tibble(auc = c(0.85, 0.84, 0.78, 0.66), 
+                   redundancy = c(1, 0.98, 0.95, 0.90), 
+                   model=rep("baseline", 4))) %>%
+  ggplot(mapping = aes(x = redundancy, y = auc, color = model))+
+  geom_line()
+
+# For now just quickly display subsample curve for the total performance
+subsample_aucs <- subsample_aucs %>% mutate(pretrain = "None")
+subsample_pre_auc <- subsample_pre_auc %>% mutate(pretrain = "Pretrained")
+bind_rows(subsample_aucs, subsample_pre_auc) %>%
+  filter(peptide == "GLCTLVAML") %>%
+  ggplot(mapping = aes(x = redundancy, y = auc, color=pretrain))+
+  geom_line()+
+  labs(x = "Sample Fraction")
+
+
 
 # AUC of positive tcrs against swapped negatives --------------------------
 
-lstm_tcr_auc <- lstm_tcr_auc %>%
+auc_per_tcr <- auc_per_tcr %>%
   group_by(peptide) %>%
   add_count(peptide, name = "counts") %>%
   filter(counts > 2) %>%
   mutate(peptide = as_factor(peptide))
 
 # generate strings for labels
-label_strings <- lstm_tcr_auc %>%
+label_strings <- auc_per_tcr %>%
   summarise(counts = n()) %>%
   mutate(label = str_c(peptide, " (", counts, ")")) %>%
   arrange(desc(counts))
 
-lstm_tcr_auc %>%
+auc_per_tcr %>%
   ggplot(mapping = aes(y = fct_reorder(peptide, desc(counts)), x = auc, fill = peptide))+
-  geom_density_ridges(alpha=0.4)+
+  geom_boxplot(alpha=0.4)+
   scale_x_continuous(limits = c(0, 1))+
   scale_y_discrete(labels = label_strings$label)+
   labs(y="", x="AUC")+
   theme_bw()+
   theme(legend.position = "none")
 # Note that NLV would often predict SL peptide higher instead. LL is probably due to very low counts
-
+# Decides that for GLC or GIL whether the model believes this is this peptide or not. For other peptides not so much
 
 # plots of score distributions per peptide and origin ---------------------
 

@@ -19,6 +19,9 @@ class ContextLayer(nn.Module):
         # x (batch, input_dim)
         hidden = torch.tanh(self.to_hidden(x))
         # hidden (batch, hidden)
+
+        # How similar is my hidden representation to the sequence context vector
+        # context_vec can be seen as the query within self attention
         context = self.context_vec(hidden).squeeze()
         # context (batch)
         return context
