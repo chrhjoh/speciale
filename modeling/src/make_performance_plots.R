@@ -49,12 +49,12 @@ auc_line_plot <- function(data, auc_col, auc_lab){
 
 
 # AUC bar plots -----------------------------------------------------------
-auc_plot(auc_per_peptide, auc_col = "auc", auc_lab = "AUC")
-auc_plot(auc_per_peptide, auc_col = "auc_0.1", auc_lab = "AUC 0.1")
-auc_plot(auc_per_peptide, auc_col = "auc_swapped", auc_lab = "AUC Swapped")
-auc_plot(auc_per_peptide, auc_col = "auc_swapped_0.1", auc_lab = "AUC Swapped 0.1")
-auc_plot(auc_per_peptide, auc_col = "auc_10x", auc_lab = "AUC 10x")
-auc_plot(auc_per_peptide, auc_col = "auc_10x_0.1", auc_lab = "AUC 10x 0.1")
+auc_plot(auc_per_peptide_attlstm, auc_col = "auc", auc_lab = "AUC")
+auc_plot(auc_per_peptide_attlstm, auc_col = "auc_0.1", auc_lab = "AUC 0.1")
+auc_plot(auc_per_peptide_attlstm, auc_col = "auc_swapped", auc_lab = "AUC Swapped")
+auc_plot(auc_per_peptide_attlstm, auc_col = "auc_swapped_0.1", auc_lab = "AUC Swapped 0.1")
+auc_plot(auc_per_peptide_attlstm, auc_col = "auc_10x", auc_lab = "AUC 10x")
+auc_plot(auc_per_peptide_attlstm, auc_col = "auc_10x_0.1", auc_lab = "AUC 10x 0.1")
 
 
 # AUC plot of total performance for all partitions ------------------------
@@ -83,13 +83,17 @@ bind_rows(auc_per_peptide_cnn,
 # subsample AUCs ----------------------------------------------------------
 
 subsample_auc <- read_csv("/Users/christianjohansen/Desktop/speciale/modeling/results/subsampling/attlstm_subsample_auc.csv")
-subsample_pre100_auc <- read_csv("/Users/christianjohansen/Desktop/speciale/modeling/results/subsampling/attlstm_GILpretrain_subsample_auc.csv")
+subsample_pre100_auc <- read_csv("/Users/christianjohansen/Desktop/speciale/modeling/results/subsampling/attlstm_GIL100pretrain_subsample_auc.csv")
 subsample_pre50_auc <- read_csv("/Users/christianjohansen/Desktop/speciale/modeling/results/subsampling/attlstm_GIL50pretrain_subsample_auc.csv")
 subsample_pre20_auc <- read_csv("/Users/christianjohansen/Desktop/speciale/modeling/results/subsampling/attlstm_GIL20pretrain_subsample_auc.csv")
 subsample_pre10_auc <- read_csv("/Users/christianjohansen/Desktop/speciale/modeling/results/subsampling/attlstm_GIL10pretrain_subsample_auc.csv")
 subsample_pre5_auc <- read_csv("/Users/christianjohansen/Desktop/speciale/modeling/results/subsampling/attlstm_GIL5pretrain_subsample_auc.csv")
 
+meta_data <- read_csv("/Users/christianjohansen/Desktop/speciale/processing/data/datasets/metadata_subsamples.csv") %>%
+              mutate(sampling = sampling / 100) # The AUCs has fractions instead of percentage
+
 # For now just quickly display subsample curve for the total performance
+
 subsample_auc <- subsample_auc %>% mutate(pretrain = 0)
 subsample_pre100_auc <- subsample_pre100_auc %>% mutate(pretrain = 1)
 subsample_pre50_auc <- subsample_pre50_auc %>% mutate(pretrain = 0.5)
@@ -97,16 +101,36 @@ subsample_pre20_auc <- subsample_pre20_auc %>% mutate(pretrain = 0.2)
 subsample_pre10_auc <- subsample_pre10_auc %>% mutate(pretrain = 0.1)
 subsample_pre5_auc <- subsample_pre5_auc %>% mutate(pretrain = 0.05)
 
+
+
 bind_rows(subsample_auc, subsample_pre100_auc, subsample_pre50_auc,
           subsample_pre20_auc, subsample_pre10_auc, subsample_pre5_auc) %>%
   mutate(pretrain = as_factor(pretrain),
          peptide = factor(peptide, levels = c("total", "GLCTLVAML", "NLVPMVATV", "FLYALALLL"))) %>%
-  filter(peptide != "LLFGYPVYV" & peptide != "RTLNAWVKV") %>%
+  filter(peptide != "LLFGYPVYV" & peptide != "RTLNAWVKV"  & redundancy != 0.05 & redundancy != 0.1) %>%
   ggplot(mapping = aes(x = redundancy, y = auc, color = pretrain))+
   geom_line()+
   facet_wrap(~peptide)+
   labs(x = "Sample Fraction", color="GIL pretraining fraction")+
   guides(color = guide_legend(reverse = TRUE))
+
+
+
+# Pretraining on number of positives --------------------------------------
+
+bind_rows(subsample_auc, subsample_pre100_auc, subsample_pre50_auc,
+          subsample_pre20_auc, subsample_pre10_auc, subsample_pre5_auc) %>%
+  inner_join(meta_data, by = c("redundancy" = "sampling", "peptide" = "pep")) %>%
+  filter(origin == "positive" & redundancy != 0.05 & redundancy != 0.1 & (pretrain == 1 | pretrain == 0)) %>%
+  mutate(pretrain = as_factor(pretrain),
+         peptide = factor(peptide, levels = c("total", "GLCTLVAML", "NLVPMVATV", "FLYALALLL"))) %>%
+  drop_na() %>%
+  ggplot(mapping = aes(x = counts, y = auc_10x, color = peptide))+
+  geom_line()+
+  facet_wrap(~pretrain)+
+  labs(x = "Number of positives", color="GIL pretraining fraction")+
+  guides(color = guide_legend(reverse = TRUE))
+
 
 # AUC of positive tcrs against swapped negatives --------------------------
 auc_per_tcr <- read_csv("/Users/christianjohansen/Desktop/speciale/modeling/results/lstm_positive_allpep_auc.csv")

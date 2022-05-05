@@ -10,11 +10,11 @@ def sample_swapped(df, ids):
     return df[swap_idx.isin(ids)]
 
 def main():
-    FRAC = 0.05
+    FRAC = 0.3
     SEED = 42
     DATA_DIR = "/Users/christianjohansen/Desktop/speciale/modeling/data"
     TRAIN_DATA_FILE = os.path.join(DATA_DIR, "datasets/train_data_all.csv")
-    OUTFILE = os.path.join(DATA_DIR, f"datasets/train_data_subsample{FRAC}.csv")
+    OUTFILE = os.path.join(DATA_DIR, f"datasets/train_data_subsample{int(FRAC*100)}.csv")
     
     df = pd.read_csv(TRAIN_DATA_FILE)
     pos_samples = df[df["origin"] == "positive"].groupby("pep").sample(frac=FRAC, random_state=SEED)

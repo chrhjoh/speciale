@@ -6,40 +6,20 @@ from torch.nn import functional as F
 import numpy as np
 from gensim.models import KeyedVectors
 
-class ContextLayer(nn.Module):
-    def __init__(self, input_dim, hidden_dim=24):
-        super(ContextLayer, self).__init__()  
-        self.to_hidden = nn.Linear(input_dim, hidden_dim)
-        self.context_vec = nn.Linear(hidden_dim, 1, bias=False)
-
-        init.kaiming_uniform_(self.to_hidden.weight)
-        init.kaiming_uniform_(self.context_vec.weight)
-
-    def forward(self, x : torch.Tensor):
-        # x (batch, input_dim)
-        hidden = torch.tanh(self.to_hidden(x))
-        # hidden (batch, hidden)
-
-        # How similar is my hidden representation to the sequence context vector
-        # context_vec can be seen as the query within self attention
-        context = self.context_vec(hidden).squeeze()
-        # context (batch)
-        return context
 
 class AttentionLayer(nn.Module):
     def __init__(self, input_dim, seq_len, hidden_dim=24):
         super(AttentionLayer, self).__init__()  
         self.seq_len = seq_len
-        self.context = ContextLayer(input_dim, hidden_dim)
+        self.q = nn.Parameter(torch.randn(hidden_dim))
+        self.wk = nn.Linear(input_dim, hidden_dim)
 
     def forward(self, x, return_attention=False):
-        # x (batch, seq_len, hidden_dim)
-        contexts = []
-        for i in range(self.seq_len):
-            contexts.append(self.context(x[:,i,:]))
+        # x (batch, seq_len, hidden_LSTM)
+        k = torch.tanh(self.wk(x))
 
-        contexts = torch.stack(contexts).transpose(0, 1)
-        attention = F.softmax(contexts,1)
+        e = torch.matmul(k, self.q)
+        attention = F.softmax(e, 1)
         self.attention = attention
         output = torch.bmm(x.transpose(1,2), attention.unsqueeze(2)).squeeze()
         if return_attention:

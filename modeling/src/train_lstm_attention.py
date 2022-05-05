@@ -75,7 +75,7 @@ def main():
     stopper = EarlyStopping(PATIENCE, filename=MODEL_FILE,delta=0)
 
     # Define network
-    net = LSTMNet()
+    net = AttentionNet()
     net.to(device)
  
     optimizer = optim.Adam(net.parameters(), lr=LR,

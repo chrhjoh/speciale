@@ -45,10 +45,11 @@ def do_file(filename):
 def main():
     DIR = "/Users/christianjohansen/Desktop/speciale/modeling"
     RES_DIR = os.path.join(DIR, "results/subsampling")
-    PREFIX = "attlstm_GIL50pretrain_subsample"
+    PREFIX = "attlstm_subsample"
     RES_FILES = [os.path.join(RES_DIR, PREFIX+"5.csv"),
                  os.path.join(RES_DIR, PREFIX+"10.csv"),
                  os.path.join(RES_DIR, PREFIX+"20.csv"),
+                 os.path.join(RES_DIR, PREFIX+"30.csv"),
                   os.path.join(RES_DIR, PREFIX+"40.csv"),
                   os.path.join(RES_DIR, PREFIX+"50.csv"),
                   os.path.join(RES_DIR, PREFIX+"60.csv"),
@@ -58,6 +59,7 @@ def main():
     labels = ["0.05",
               "0.1",
               "0.2",
+              "0.3",
               "0.4",
               "0.5",
               "0.6",
