@@ -80,7 +80,7 @@ bind_rows(auc_per_peptide_cnn,
 
 
 
-# subsample AUCs ----------------------------------------------------------
+# subsample AUCs with pretraining ----------------------------------------------------------
 
 subsample_auc <- read_csv("/Users/christianjohansen/Desktop/speciale/modeling/results/subsampling/attlstm_subsample_auc.csv")
 subsample_pre100_auc <- read_csv("/Users/christianjohansen/Desktop/speciale/modeling/results/subsampling/attlstm_GIL100pretrain_subsample_auc.csv")
@@ -130,6 +130,23 @@ bind_rows(subsample_auc, subsample_pre100_auc, subsample_pre50_auc,
   facet_wrap(~pretrain)+
   labs(x = "Number of positives", color="GIL pretraining fraction")+
   guides(color = guide_legend(reverse = TRUE))
+
+
+# Subsample peptide specific vs pan ---------------------------------------
+pan_gil_auc <- read_csv("/Users/christianjohansen/Desktop/speciale/modeling/results/subsampling/attlstmpan_GIL_auc.csv")
+specific_gil_auc <- read_csv("/Users/christianjohansen/Desktop/speciale/modeling/results/subsampling/attlstmsingle_GIL_auc.csv")
+
+pan_gil_auc <- pan_gil_auc %>% mutate(model = "pan")
+specific_gil_auc <- specific_gil_auc %>% mutate(model = "specific")
+
+bind_rows(pan_gil_auc, specific_gil_auc) %>%
+  filter(peptide == "GILGFVFTL") %>%
+  ggplot(mapping = aes(x = n_positives, y = auc, color = model))+
+  geom_line()+
+  labs(x = "Number of positives", color="GILGFVFTL model")+
+  guides(color = guide_legend(reverse = TRUE))
+
+
 
 
 # AUC of positive tcrs against swapped negatives --------------------------

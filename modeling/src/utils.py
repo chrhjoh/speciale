@@ -384,6 +384,21 @@ def setup_seed(seed):
     torch.cuda.manual_seed_all(seed)           
     torch.backends.cudnn.deterministic = True  
 
+def sample_swapped(df, ids):
+    """
+    Returns the swapped negatives, that were swapped from sampled positives
+    """
+    ids = list(ids)
+    swap_idx = pd.to_numeric(df["origin"].str.split("_").str[1])
+    return df[swap_idx.isin(ids)]
 
 
+
+def downsample_peptide(df, peptide, frac):
+    other_peps = df[df["pep"] != peptide]
+    pos_samples = df[(df["origin"] == "positive") & (df["pep"] == peptide)].sample(frac=frac, random_state=42)
+    neg_samples = df[(df["origin"] == "10x") & (df["pep"] == peptide)].sample(frac=frac, random_state=42)
+    swapped_samples = df[(df["origin"].str.startswith("swapped")) & (df["pep"] == peptide)].sample(frac=frac, random_state=42)
+    sampled_df = pd.concat([other_peps, pos_samples, neg_samples, swapped_samples])
+    return sampled_df
     

@@ -7,7 +7,7 @@ import os
 import sys
 from torch import nn, optim, cuda
 from torch.utils.data.dataloader import DataLoader
-from utils import Runner, EarlyStopping, AttentionDataset, setup_seed
+from utils import Runner, EarlyStopping, AttentionDataset, setup_seed, downsample_peptide
 from attention_net import LSTMNet, AttentionNet, EmbedAttentionNet
 from gensim.models import KeyedVectors
 
@@ -16,17 +16,18 @@ sns.set_theme(style="ticks", rc=custom_params, palette="pastel")
 
 def main():
     ############ PARAMETERS ##############
-    sample = 50
+    fraction = 0.2
+    peptide = "GLCTLVAML" # GLCTLVAML NLVPMVATV GILGFVFTL
     DIR = os.path.join("/Users/christianjohansen/Desktop/speciale/modeling")
     DATA_DIR = os.path.join(DIR,"data")
-    TRAIN_FILE = os.path.join(DATA_DIR, "datasets", f"train_data_subsample{sample}.csv")
-    #TRAIN_FILE = os.path.join(DATA_DIR, "datasets", f"train_data_all.csv")
+    #TRAIN_FILE = os.path.join(DATA_DIR, "datasets", f"train_data_subsample{sample}.csv")
+    TRAIN_FILE = os.path.join(DATA_DIR, "datasets", "train_data_all.csv")
     TEST_FILE = os.path.join(DATA_DIR, "datasets", "train_data_all.csv")
     MODEL_FILE = os.path.join(DATA_DIR, "models", "lstm_cdr_model.pt")
-    SCORE_FILE = os.path.join(DIR, "results", f"subsampling/attlstm_GIL50pretrain_subsample{sample}.csv")
-    PRETRAIN_MODEL = os.path.join(DATA_DIR, "models", "GIL50_attlstm_pretrained.pt")
 
-    START_FROM_PRETRAINED = True
+    PRETRAIN_MODEL = os.path.join(DATA_DIR, "models", "GIL100_attlstm_pretrained.pt")
+
+    START_FROM_PRETRAINED = False
 
     CLI = False
     # Data parameters
@@ -38,15 +39,15 @@ def main():
 
     else:   
         TRAIN_PARTITION = [1,2,3]
-        VAL_PARTITION = [5]
-        TEST_PARTITION = [4]
+        VAL_PARTITION = [4]
+        TEST_PARTITION = [5]
 
     sequences = ["pep", 
                  "cdr1a", "cdr2a", "cdr3a",
                  "cdr1b", "cdr2b", "cdr3b"]
     ENCODING = "encode"
-    cdr3a_embedding = KeyedVectors.load(os.path.join(DATA_DIR, "encoding", "embeddings_cdr3a.wv"))
-    cdr3b_embedding = KeyedVectors.load(os.path.join(DATA_DIR, "encoding", "embeddings_cdr3b.wv"))
+    #cdr3a_embedding = KeyedVectors.load(os.path.join(DATA_DIR, "encoding", "embeddings_cdr3a.wv"))
+    #cdr3b_embedding = KeyedVectors.load(os.path.join(DATA_DIR, "encoding", "embeddings_cdr3b.wv"))
 
     # Loader parameters
     BATCH_SIZE = 64
@@ -64,24 +65,30 @@ def main():
     device = torch.device("cuda" if cuda.is_available() else "cpu")
     print("Using device:", device)
 
-    train_df = pd.read_csv(TRAIN_FILE, index_col=0)
+    df = pd.read_csv(TRAIN_FILE, index_col=0)
+    
+    train_df = downsample_peptide(df, peptide, fraction)
+    #train_df = train_df[train_df["pep"] == peptide]
     test_df = pd.read_csv(TEST_FILE, index_col=0)
-    train_df = train_df[train_df["pep"] != "GILGFVFTL"]
-    test_df = test_df[test_df["pep"] != "GILGFVFTL"]
+    #test_df = test_df[test_df["pep"] != "GILGFVFTL"]
+    n_positive = ((train_df["label"] == 1) & (train_df["pep"] == peptide) & (train_df["partition"].isin(TRAIN_PARTITION))).sum()
+    SCORE_FILE = os.path.join(DIR, "results", f"subsampling/attlstmpan_{peptide[:3]}{n_positive}.csv")
+    
+
 
     train_data = AttentionDataset(train_df, TRAIN_PARTITION, sequences, shuffle=True, encode_type=ENCODING)
     val_data = AttentionDataset(train_df, VAL_PARTITION, sequences, shuffle=True, encode_type=ENCODING)
     test_data = AttentionDataset(test_df, TEST_PARTITION, sequences, shuffle=True, encode_type=ENCODING)
 
     train_dl = DataLoader(train_data, BATCH_SIZE, drop_last=True)
-    val_dl = DataLoader(val_data, BATCH_SIZE)
+    val_dl = DataLoader(val_data, BATCH_SIZE, drop_last=True)
     test_dl = DataLoader(test_data, BATCH_SIZE)
 
     ############### DEFINE NETWORK ################
     # Define loss and optimizer
     criterion = nn.BCELoss(reduction='none')
     loss_weight = sum(train_data.labels) / len(train_data.labels)
-    stopper = EarlyStopping(PATIENCE, filename=MODEL_FILE,delta=0)
+    stopper = EarlyStopping(PATIENCE, filename=MODEL_FILE, delta=0)
 
     # Define network
     net = AttentionNet()

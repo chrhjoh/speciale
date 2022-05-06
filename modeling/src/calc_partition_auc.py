@@ -45,34 +45,34 @@ def do_file(filename):
 def main():
     DIR = "/Users/christianjohansen/Desktop/speciale/modeling"
     RES_DIR = os.path.join(DIR, "results/subsampling")
-    PREFIX = "attlstm_subsample"
-    RES_FILES = [os.path.join(RES_DIR, PREFIX+"5.csv"),
-                 os.path.join(RES_DIR, PREFIX+"10.csv"),
-                 os.path.join(RES_DIR, PREFIX+"20.csv"),
-                 os.path.join(RES_DIR, PREFIX+"30.csv"),
-                  os.path.join(RES_DIR, PREFIX+"40.csv"),
-                  os.path.join(RES_DIR, PREFIX+"50.csv"),
-                  os.path.join(RES_DIR, PREFIX+"60.csv"),
-                  os.path.join(RES_DIR, PREFIX+"80.csv"),
-                  os.path.join(RES_DIR, PREFIX+"100.csv")]
+    PREFIX = "attlstmsingle_GIL"
+    RES_FILES = [os.path.join(RES_DIR, PREFIX+"15.csv"),
+                 os.path.join(RES_DIR, PREFIX+"35.csv"),
+                 os.path.join(RES_DIR, PREFIX+"65.csv"),
+                 os.path.join(RES_DIR, PREFIX+"83.csv"),
+                  os.path.join(RES_DIR, PREFIX+"144.csv"),
+                  os.path.join(RES_DIR, PREFIX+"212.csv"),
+                  os.path.join(RES_DIR, PREFIX+"359.csv"),
+                  os.path.join(RES_DIR, PREFIX+"550.csv"),
+                  os.path.join(RES_DIR, PREFIX+"724.csv")]
     OUT_FILE = os.path.join(RES_DIR, PREFIX+"_auc.csv")
-    labels = ["0.05",
-              "0.1",
-              "0.2",
-              "0.3",
-              "0.4",
-              "0.5",
-              "0.6",
-              "0.8",
-              "1.0"]
+    labels = ["15",
+              "35",
+              "65",
+              "83",
+              "144",
+              "212",
+              "359",
+              "550",
+              "724"]
 
     outputs = []
     for i, file in enumerate(RES_FILES):
         df = do_file(file)
-        df["redundancy"] = labels[i]
+        df["n_positives"] = labels[i]
         outputs.append(df)
     df = pd.concat(outputs)
-    df = df.set_index([df.index, "redundancy"])
+    df = df.set_index([df.index, "n_positives"])
 
     df.to_csv(OUT_FILE)
 if __name__ == "__main__":
