@@ -45,31 +45,15 @@ def do_file(filename):
 def main():
     DIR = "/Users/christianjohansen/Desktop/speciale/modeling"
     RES_DIR = os.path.join(DIR, "results/subsampling")
-    PREFIX = "attlstmsingle_GIL"
-    RES_FILES = [os.path.join(RES_DIR, PREFIX+"15.csv"),
-                 os.path.join(RES_DIR, PREFIX+"35.csv"),
-                 os.path.join(RES_DIR, PREFIX+"65.csv"),
-                 os.path.join(RES_DIR, PREFIX+"83.csv"),
-                  os.path.join(RES_DIR, PREFIX+"144.csv"),
-                  os.path.join(RES_DIR, PREFIX+"212.csv"),
-                  os.path.join(RES_DIR, PREFIX+"359.csv"),
-                  os.path.join(RES_DIR, PREFIX+"550.csv"),
-                  os.path.join(RES_DIR, PREFIX+"724.csv")]
+    PREFIX = "pretrained_attlstmsingle_GIL"
+    SUFFIX = [15, 35, 65, 83, 144, 212, 359, 550, 724]
+    RES_FILES = [os.path.join(RES_DIR, PREFIX+str(s)+".csv") for s in SUFFIX]
     OUT_FILE = os.path.join(RES_DIR, PREFIX+"_auc.csv")
-    labels = ["15",
-              "35",
-              "65",
-              "83",
-              "144",
-              "212",
-              "359",
-              "550",
-              "724"]
 
     outputs = []
     for i, file in enumerate(RES_FILES):
         df = do_file(file)
-        df["n_positives"] = labels[i]
+        df["n_positives"] = SUFFIX[i]
         outputs.append(df)
     df = pd.concat(outputs)
     df = df.set_index([df.index, "n_positives"])

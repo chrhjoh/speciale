@@ -19,8 +19,8 @@ def main():
     ############ PARAMETERS ##############
     DIR = os.path.join("/Users/christianjohansen/Desktop/speciale/modeling")
     DATA_DIR = os.path.join(DIR,"data")
-    DATA_FILE = os.path.join(DATA_DIR, "datasets", "train_data_subsample50.csv")
-    MODEL_FILE = os.path.join(DATA_DIR, "models", "GIL50_attlstm_pretrained.pt")
+    DATA_FILE = os.path.join(DATA_DIR, "datasets", "train_data_all.csv")
+    MODEL_FILE = os.path.join(DATA_DIR, "models", "noGLC100_attlstm_pretrained.pt")
 
     CLI = False
     # Data parameters
@@ -58,7 +58,7 @@ def main():
 
     df = pd.read_csv(DATA_FILE, index_col=0)
     
-    df = df[df["pep"] == "GILGFVFTL"]
+    df = df[df["pep"] != "GLCTLVAML"]
     train_data = AttentionDataset(df, TRAIN_PARTITION, sequences, shuffle=True, encode_type=ENCODING)
     val_data = AttentionDataset(df, VAL_PARTITION, sequences, shuffle=True, encode_type=ENCODING)
 
