@@ -16,9 +16,9 @@ sns.set_theme(style="ticks", rc=custom_params, palette="pastel")
 
 def main():
     ############ PARAMETERS ##############
-    n_pos = 12
+    n_pos = 15
     sample_seed = 4
-    peptide = "NLVPMVATV" # GLCTLVAML NLVPMVATV GILGFVFTL
+    peptide = "GLCTLVAML" # GLCTLVAML NLVPMVATV GILGFVFTL
     DIR = os.path.join("/Users/christianjohansen/Desktop/speciale/modeling")
     DATA_DIR = os.path.join(DIR,"data")
     #TRAIN_FILE = os.path.join(DATA_DIR, "datasets", f"train_data_subsample{sample}.csv")
@@ -28,7 +28,7 @@ def main():
 
     PRETRAIN_MODEL = os.path.join(DATA_DIR, "models", "noGIL100_attlstm_pretrained.pt")
 
-    START_FROM_PRETRAINED = False
+    START_FROM_PRETRAINED = True
 
     CLI = False
     # Data parameters
@@ -70,18 +70,18 @@ def main():
     
     train_df = df[df["partition"].isin(TRAIN_PARTITION)]
     train_df = downsample_peptide(train_df, peptide, n_pos, seed=sample_seed)
-    #train_df = train_df[train_df["pep"] == peptide]
-    #df = df[df["pep"] == peptide]
+    train_df = train_df[train_df["pep"] == peptide]
+    df = df[df["pep"] == peptide]
     test_df = pd.read_csv(TEST_FILE, index_col=0)
 
     n_positive = ((train_df["label"] == 1) & (train_df["pep"] == peptide) & (train_df["partition"].isin(TRAIN_PARTITION))).sum()
-    SCORE_FILE = os.path.join(DIR, "results", f"subsampling/attlstmpan_{peptide[:3]}{n_positive}_{sample_seed}.csv")
+    SCORE_FILE = os.path.join(DIR, "results", f"subsampling/pretrained_attlstmsingle_{peptide[:3]}{n_positive}_{sample_seed}.csv")
 
     train_data = AttentionDataset(train_df, TRAIN_PARTITION, sequences, shuffle=True, encode_type=ENCODING)
     val_data = AttentionDataset(df, VAL_PARTITION, sequences, shuffle=True, encode_type=ENCODING)
     test_data = AttentionDataset(test_df, TEST_PARTITION, sequences, shuffle=True, encode_type=ENCODING)
 
-    train_dl = DataLoader(train_data, BATCH_SIZE, drop_last=True)
+    train_dl = DataLoader(train_data, BATCH_SIZE)
     val_dl = DataLoader(val_data, BATCH_SIZE)
     test_dl = DataLoader(test_data, BATCH_SIZE)
 
@@ -89,7 +89,7 @@ def main():
     # Define loss and optimizer
     criterion = nn.BCELoss(reduction='none')
     loss_weight = sum(train_data.labels) / len(train_data.labels)
-    stopper = EarlyStopping(PATIENCE, filename=MODEL_FILE, delta=0)
+    stopper = EarlyStopping(PATIENCE, filename=MODEL_FILE)
 
     # Define network
     net = AttentionNet()
