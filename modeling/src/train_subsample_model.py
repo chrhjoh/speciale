@@ -16,8 +16,9 @@ sns.set_theme(style="ticks", rc=custom_params, palette="pastel")
 
 def main():
     ############ PARAMETERS ##############
-    fraction = 0.02
-    peptide = "GILGFVFTL" # GLCTLVAML NLVPMVATV GILGFVFTL
+    n_pos = 12
+    sample_seed = 4
+    peptide = "NLVPMVATV" # GLCTLVAML NLVPMVATV GILGFVFTL
     DIR = os.path.join("/Users/christianjohansen/Desktop/speciale/modeling")
     DATA_DIR = os.path.join(DIR,"data")
     #TRAIN_FILE = os.path.join(DATA_DIR, "datasets", f"train_data_subsample{sample}.csv")
@@ -27,7 +28,7 @@ def main():
 
     PRETRAIN_MODEL = os.path.join(DATA_DIR, "models", "noGIL100_attlstm_pretrained.pt")
 
-    START_FROM_PRETRAINED = True
+    START_FROM_PRETRAINED = False
 
     CLI = False
     # Data parameters
@@ -67,15 +68,17 @@ def main():
 
     df = pd.read_csv(TRAIN_FILE, index_col=0)
     
-    train_df = downsample_peptide(df, peptide, fraction)
-    train_df = train_df[train_df["pep"] == peptide]
+    train_df = df[df["partition"].isin(TRAIN_PARTITION)]
+    train_df = downsample_peptide(train_df, peptide, n_pos, seed=sample_seed)
+    #train_df = train_df[train_df["pep"] == peptide]
+    #df = df[df["pep"] == peptide]
     test_df = pd.read_csv(TEST_FILE, index_col=0)
-    #test_df = test_df[test_df["pep"] != "GILGFVFTL"]
+
     n_positive = ((train_df["label"] == 1) & (train_df["pep"] == peptide) & (train_df["partition"].isin(TRAIN_PARTITION))).sum()
-    SCORE_FILE = os.path.join(DIR, "results", f"subsampling/pretrained_attlstmsingle_{peptide[:3]}{n_positive}.csv")
+    SCORE_FILE = os.path.join(DIR, "results", f"subsampling/attlstmpan_{peptide[:3]}{n_positive}_{sample_seed}.csv")
 
     train_data = AttentionDataset(train_df, TRAIN_PARTITION, sequences, shuffle=True, encode_type=ENCODING)
-    val_data = AttentionDataset(train_df, VAL_PARTITION, sequences, shuffle=True, encode_type=ENCODING)
+    val_data = AttentionDataset(df, VAL_PARTITION, sequences, shuffle=True, encode_type=ENCODING)
     test_data = AttentionDataset(test_df, TEST_PARTITION, sequences, shuffle=True, encode_type=ENCODING)
 
     train_dl = DataLoader(train_data, BATCH_SIZE, drop_last=True)

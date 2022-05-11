@@ -394,11 +394,14 @@ def sample_swapped(df, ids):
 
 
 
-def downsample_peptide(df, peptide, frac):
+def downsample_peptide(df, peptide, n_pos, seed):
     other_peps = df[df["pep"] != peptide]
-    pos_samples = df[(df["origin"] == "positive") & (df["pep"] == peptide)].sample(frac=frac, random_state=42)
-    neg_samples = df[(df["origin"] == "10x") & (df["pep"] == peptide)].sample(frac=frac, random_state=42)
-    swapped_samples = df[(df["origin"].str.startswith("swapped")) & (df["pep"] == peptide)].sample(frac=frac, random_state=42)
+    peptide_df = df[df["pep"] == peptide]
+    frac = n_pos / peptide_df[(peptide_df["origin"] == "positive")].shape[0]
+
+    pos_samples = df[(df["origin"] == "positive") & (df["pep"] == peptide)].sample(n=n_pos, random_state=seed)
+    neg_samples = df[(df["origin"] == "10x") & (df["pep"] == peptide)].sample(frac=frac, random_state=seed)
+    swapped_samples = df[(df["origin"].str.startswith("swapped")) & (df["pep"] == peptide)].sample(frac=frac, random_state=seed)
     sampled_df = pd.concat([other_peps, pos_samples, neg_samples, swapped_samples])
     return sampled_df
     
