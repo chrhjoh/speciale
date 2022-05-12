@@ -152,8 +152,11 @@ specific_gil_auc <- specific_gil_auc %>% mutate(model = "specific")
 pretrain_gil_auc <- pretrain_gil_auc %>% mutate(model = "pretrain")
 
 bind_rows(pan_gil_auc, specific_gil_auc, pretrain_gil_auc) %>%
-  ggplot(mapping = aes(x = n_positives, y = auc, color = model))+
+  group_by(peptide, n_positives, model) %>%
+  summarise(mean_auc = mean(auc), sd_auc = sd(auc)) %>%
+  ggplot(mapping = aes(x = n_positives, y = mean_auc, color = model))+
   geom_line()+
+  geom_errorbar(mapping = aes(ymin = mean_auc - sd_auc, ymax = mean_auc + sd_auc), alpha=0.4, width = 5)+
   labs(x = "Number of positives", color="GILGFVFTL model")+
   guides(color = guide_legend(reverse = TRUE))
 
@@ -170,8 +173,11 @@ specific_glc_auc <- specific_glc_auc %>% mutate(model = "specific")
 pretrain_glc_auc <- pretrain_glc_auc %>% mutate(model = "pretrain")
 
 bind_rows(pan_glc_auc, specific_glc_auc, pretrain_glc_auc) %>%
-  ggplot(mapping = aes(x = n_positives, y = auc, color = model))+
+  group_by(peptide, n_positives, model) %>%
+  summarise(mean_auc = mean(auc), sd_auc = sd(auc)) %>%
+  ggplot(mapping = aes(x = n_positives, y = mean_auc, color = model))+
   geom_line()+
+  geom_errorbar(mapping = aes(ymin = mean_auc - sd_auc, ymax = mean_auc + sd_auc), alpha=0.4, width = 1)+
   labs(x = "Number of positives", color="GLCTLVAML model")+
   guides(color = guide_legend(reverse = TRUE))
 
@@ -189,8 +195,11 @@ specific_nlv_auc <- specific_nlv_auc %>% mutate(model = "specific")
 pretrain_nlv_auc <- pretrain_nlv_auc %>% mutate(model = "pretrain")
 
 bind_rows(pan_nlv_auc, specific_nlv_auc, pretrain_nlv_auc) %>%
-  ggplot(mapping = aes(x = n_positives, y = auc, color = model))+
+  group_by(peptide, n_positives, model) %>%
+  summarise(mean_auc = mean(auc), sd_auc = sd(auc)) %>%
+  ggplot(mapping = aes(x = n_positives, y = mean_auc, color = model))+
   geom_line()+
+  geom_errorbar(mapping = aes(ymin = mean_auc - sd_auc, ymax = mean_auc + sd_auc), alpha=0.4, width = 1)+
   labs(x = "Number of positives", color="NLVPMVATV model")+
   guides(color = guide_legend(reverse = TRUE))
 

@@ -45,16 +45,22 @@ def do_file(filename):
 def main():
     DIR = "/Users/christianjohansen/Desktop/speciale/modeling"
     RES_DIR = os.path.join(DIR, "results/subsampling")
-    PREFIX = "pretrained_attlstmsingle_GIL"
-    SUFFIX = [15, 35, 65, 83, 144, 212, 359, 550, 724]
-    RES_FILES = [os.path.join(RES_DIR, PREFIX+str(s)+".csv") for s in SUFFIX]
+    PREFIX = "attlstmpan_GIL"
+
     OUT_FILE = os.path.join(RES_DIR, PREFIX+"_auc.csv")
+    SUFFIX = [15, 35, 65, 83, 144, 212, 359, 550, 724]
+    REPLICATION = ["", "_1", "_2", "_3", "_4"]
+    RES_FILES = [os.path.join(RES_DIR, PREFIX+str(s)) for s in SUFFIX]
+    
 
     outputs = []
     for i, file in enumerate(RES_FILES):
-        df = do_file(file)
-        df["n_positives"] = SUFFIX[i]
-        outputs.append(df)
+        for j, replicate in enumerate(REPLICATION):
+            input_file = file + replicate + ".csv"
+            df = do_file(input_file)
+            df["n_positives"] = SUFFIX[i]
+            df["replication"] = j
+            outputs.append(df)
     df = pd.concat(outputs)
     df = df.set_index([df.index, "n_positives"])
 

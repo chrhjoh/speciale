@@ -16,17 +16,18 @@ sns.set_theme(style="ticks", rc=custom_params, palette="pastel")
 
 def main():
     ############ PARAMETERS ##############
-    n_pos = 15
-    sample_seed = 4
-    peptide = "GLCTLVAML" # GLCTLVAML NLVPMVATV GILGFVFTL
+    n_pos = 89
+    sample_seed = 42
+    peptide = "NLVPMVATV" # GLCTLVAML NLVPMVATV GILGFVFTL
     DIR = os.path.join("/Users/christianjohansen/Desktop/speciale/modeling")
     DATA_DIR = os.path.join(DIR,"data")
     #TRAIN_FILE = os.path.join(DATA_DIR, "datasets", f"train_data_subsample{sample}.csv")
     TRAIN_FILE = os.path.join(DATA_DIR, "datasets", "train_data_all.csv")
     TEST_FILE = os.path.join(DATA_DIR, "datasets", "train_data_all.csv")
-    MODEL_FILE = os.path.join(DATA_DIR, "models", "lstm_cdr_model.pt")
+    MODEL_FILE = os.path.join(DATA_DIR, "models", "NLVpretrain_model.pt")
+    SCORE_FILE = os.path.join(DIR, "results", f"subsampling/pretrained_attlstmsingle_{peptide[:3]}{n_pos}_{sample_seed}.csv")
 
-    PRETRAIN_MODEL = os.path.join(DATA_DIR, "models", "noGIL100_attlstm_pretrained.pt")
+    PRETRAIN_MODEL = os.path.join(DATA_DIR, "models", "noNLV100_attlstm_pretrained.pt")
 
     START_FROM_PRETRAINED = True
 
@@ -74,14 +75,11 @@ def main():
     df = df[df["pep"] == peptide]
     test_df = pd.read_csv(TEST_FILE, index_col=0)
 
-    n_positive = ((train_df["label"] == 1) & (train_df["pep"] == peptide) & (train_df["partition"].isin(TRAIN_PARTITION))).sum()
-    SCORE_FILE = os.path.join(DIR, "results", f"subsampling/pretrained_attlstmsingle_{peptide[:3]}{n_positive}_{sample_seed}.csv")
-
     train_data = AttentionDataset(train_df, TRAIN_PARTITION, sequences, shuffle=True, encode_type=ENCODING)
     val_data = AttentionDataset(df, VAL_PARTITION, sequences, shuffle=True, encode_type=ENCODING)
     test_data = AttentionDataset(test_df, TEST_PARTITION, sequences, shuffle=True, encode_type=ENCODING)
 
-    train_dl = DataLoader(train_data, BATCH_SIZE)
+    train_dl = DataLoader(train_data, BATCH_SIZE, drop_last=True)
     val_dl = DataLoader(val_data, BATCH_SIZE)
     test_dl = DataLoader(test_data, BATCH_SIZE)
 
