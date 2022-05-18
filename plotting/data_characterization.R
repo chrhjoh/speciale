@@ -54,7 +54,7 @@ data %>%
   ggplot(mapping = aes(x = fct_reorder(pep, desc(n)), fill = origin ))+
   geom_bar(position = "dodge")+
   labs(x = "Peptide", y = "Number of Observations", fill = "Origin")+
-  theme_minimal()+
+  theme_bw()+
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 

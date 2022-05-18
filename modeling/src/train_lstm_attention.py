@@ -20,7 +20,7 @@ def main():
     DIR = os.path.join("/Users/christianjohansen/Desktop/speciale/modeling")
     DATA_DIR = os.path.join(DIR,"data")
     DATA_FILE = os.path.join(DATA_DIR, "datasets", "train_data_all.csv")
-    MODEL_FILE = os.path.join(DATA_DIR, "models", "lstm_cdr_model.pt")
+    MODEL_FILE = os.path.join(DATA_DIR, "models", "panattlstm_model.pt")
     SCORE_FILE = os.path.join(DIR, "results", "embattlstm_90_cv_scores.csv")
 
     CLI = False
@@ -157,7 +157,7 @@ def main():
     test_runner.evaluate_model()
     plt.title("Test Data")
     plt.show()
-    test_runner.scores_to_file(SCORE_FILE)
+    #test_runner.scores_to_file(SCORE_FILE)
 
     
     print("Final model saved at:", MODEL_FILE)

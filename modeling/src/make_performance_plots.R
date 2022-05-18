@@ -76,7 +76,9 @@ bind_rows(auc_per_peptide_cnn,
                    redundancy = c(1, 0.98, 0.95, 0.90), 
                    model=rep("baseline", 4))) %>%
   ggplot(mapping = aes(x = redundancy, y = auc, color = model))+
-  geom_line()
+  geom_line()+
+  labs(x = "Redundancy", y = "AUC", color = "Model")+
+  theme_bw()
 
 
 
@@ -156,8 +158,9 @@ bind_rows(pan_gil_auc, specific_gil_auc, pretrain_gil_auc) %>%
   summarise(mean_auc = mean(auc), sd_auc = sd(auc)) %>%
   ggplot(mapping = aes(x = n_positives, y = mean_auc, color = model))+
   geom_line()+
+  theme_bw()+
   geom_errorbar(mapping = aes(ymin = mean_auc - sd_auc, ymax = mean_auc + sd_auc), alpha=0.4, width = 5)+
-  labs(x = "Number of positives", color="GILGFVFTL model")+
+  labs(x = "Number of positives", color="GILGFVFTL model", y="AUC")+
   guides(color = guide_legend(reverse = TRUE))
 
 ###### GLC
@@ -177,8 +180,9 @@ bind_rows(pan_glc_auc, specific_glc_auc, pretrain_glc_auc) %>%
   summarise(mean_auc = mean(auc), sd_auc = sd(auc)) %>%
   ggplot(mapping = aes(x = n_positives, y = mean_auc, color = model))+
   geom_line()+
+  theme_bw()+
   geom_errorbar(mapping = aes(ymin = mean_auc - sd_auc, ymax = mean_auc + sd_auc), alpha=0.4, width = 1)+
-  labs(x = "Number of positives", color="GLCTLVAML model")+
+  labs(x = "Number of positives", color="GLCTLVAML model", y="AUC")+
   guides(color = guide_legend(reverse = TRUE))
 
 
@@ -199,55 +203,80 @@ bind_rows(pan_nlv_auc, specific_nlv_auc, pretrain_nlv_auc) %>%
   summarise(mean_auc = mean(auc), sd_auc = sd(auc)) %>%
   ggplot(mapping = aes(x = n_positives, y = mean_auc, color = model))+
   geom_line()+
+  theme_bw()+
   geom_errorbar(mapping = aes(ymin = mean_auc - sd_auc, ymax = mean_auc + sd_auc), alpha=0.4, width = 1)+
-  labs(x = "Number of positives", color="NLVPMVATV model")+
+  labs(x = "Number of positives", color="NLVPMVATV model", y="AUC")+
   guides(color = guide_legend(reverse = TRUE))
 
 
 bind_rows(pan_gil_auc, pan_nlv_auc, pan_glc_auc) %>%
   filter(peptide %in% c("NLVPMVATV", "GILGFVFTL", "GLCTLVAML")) %>%
-  ggplot(mapping = aes(x = n_positives, y = auc, color = peptide))+
+  group_by(peptide, n_positives) %>%
+  summarise(mean_auc = mean(auc), sd_auc = sd(auc)) %>%
+  ggplot(mapping = aes(x = n_positives, y = mean_auc, color = peptide))+
   geom_line()+
-  labs(x = "Number of positives", color="Peptide", title = "Pan Model")+
+  geom_errorbar(mapping = aes(ymin = mean_auc - sd_auc, ymax = mean_auc + sd_auc), alpha=0.4, width = 1)+
+  theme_bw()+
+  labs(x = "Number of positives", color="Peptide", title = "Pan Specific Model", y="AUC")+
   guides(color = guide_legend(reverse = TRUE))
 
 bind_rows(specific_gil_auc, specific_nlv_auc, specific_glc_auc) %>%
   filter(peptide %in% c("NLVPMVATV", "GILGFVFTL", "GLCTLVAML")) %>%
-  ggplot(mapping = aes(x = n_positives, y = auc, color = peptide))+
+  group_by(peptide, n_positives) %>%
+  summarise(mean_auc = mean(auc), sd_auc = sd(auc)) %>%
+  ggplot(mapping = aes(x = n_positives, y = mean_auc, color = peptide))+
   geom_line()+
-  labs(x = "Number of positives", color="Peptide", title = "Peptide Specific Model")+
+  geom_errorbar(mapping = aes(ymin = mean_auc - sd_auc, ymax = mean_auc + sd_auc), alpha=0.4, width = 1)+
+  theme_bw()+
+  labs(x = "Number of positives", color="Peptide", title = "Peptide Specific Models", y="AUC")+
   guides(color = guide_legend(reverse = TRUE))
 
 bind_rows(pretrain_gil_auc, pretrain_nlv_auc, pretrain_glc_auc) %>%
   filter(peptide %in% c("NLVPMVATV", "GILGFVFTL", "GLCTLVAML")) %>%
-  ggplot(mapping = aes(x = n_positives, y = auc, color = peptide))+
+  group_by(peptide, n_positives) %>%
+  summarise(mean_auc = mean(auc), sd_auc = sd(auc)) %>%
+  ggplot(mapping = aes(x = n_positives, y = mean_auc, color = peptide))+
   geom_line()+
-  labs(x = "Number of positives", color="Peptide", title = "Pretrained Specific Model")+
+  geom_errorbar(mapping = aes(ymin = mean_auc - sd_auc, ymax = mean_auc + sd_auc), alpha=0.4, width = 1)+
+  theme_bw()+
+  labs(x = "Number of positives", color="Peptide", title = "Pretrained Models", y="AUC")+
   guides(color = guide_legend(reverse = TRUE))
 
 # AUC of positive tcrs against swapped negatives --------------------------
-auc_per_tcr <- read_csv("/Users/christianjohansen/Desktop/speciale/modeling/results/lstm_positive_allpep_auc.csv")
+tcrauc_pan <- read_csv("/Users/christianjohansen/Desktop/speciale/modeling/results/lstm_positive_allpep_auc.csv")
+tcrauc_gil <- read_csv("/Users/christianjohansen/Desktop/speciale/modeling/results/GILattlstm_positive_GIL_scores_auc.csv") %>%
+  mutate(peptide = "GILGFVFTL",
+         model = "Specific Pretrained")
+tcrauc_glc <- read_csv("/Users/christianjohansen/Desktop/speciale/modeling/results/GLCattlstm_positive_GLC_scores_auc.csv")%>%
+  mutate(peptide = "GLCTLVAML",
+         model = "Specific Pretrained")
+tcrauc_nlv <- read_csv("/Users/christianjohansen/Desktop/speciale/modeling/results/NLVattlstm_positive_NLV_scores_auc.csv") %>%
+  mutate(peptide = "NLVPMVATV",
+         model = "Specific Pretrained")
 
-auc_per_tcr <- auc_per_tcr %>%
-  group_by(peptide) %>%
+tcrauc_pan <- tcrauc_pan %>%
   add_count(peptide, name = "counts") %>%
-  filter(counts > 2) %>%
-  mutate(peptide = as_factor(peptide))
+  rename(Drop = ID, ID = ...1) %>%
+  filter(counts > 20) %>%
+  mutate(model = "pan")
+
 
 # generate strings for labels
-label_strings <- auc_per_tcr %>%
+label_strings <- tcrauc_pan %>%
+  group_by(peptide) %>%
   summarise(counts = n()) %>%
-  mutate(label = str_c(peptide, " (", counts, ")")) %>%
+  mutate(label = str_c(peptide, " (", counts * 3, ")")) %>%
   arrange(desc(counts))
 
-auc_per_tcr %>%
-  ggplot(mapping = aes(y = fct_reorder(peptide, desc(counts)), x = auc, fill = peptide))+
+bind_rows(tcrauc_pan, tcrauc_gil, tcrauc_glc, tcrauc_nlv) %>%
+  mutate(peptide = as_factor(peptide)) %>%
+  ggplot(mapping = aes(y = peptide, x = auc, fill = model))+
   geom_boxplot(alpha=0.4)+
   scale_x_continuous(limits = c(0, 1))+
   scale_y_discrete(labels = label_strings$label)+
   labs(y="", x="AUC")+
-  theme_bw()+
-  theme(legend.position = "none")
+  theme_bw()
+
 # Note that NLV would often predict SL peptide higher instead. LL is probably due to very low counts
 # Decides that for GLC or GIL whether the model believes this is this peptide or not. For other peptides not so much
 
@@ -255,6 +284,7 @@ auc_per_tcr %>%
 
 scores_data <- read_csv("/Users/christianjohansen/Desktop/speciale/modeling/results/lstm_attention_scores.csv",
                         col_names = c("ID", "peptide", "origin", "score", "label"))
+
 
 scores_data <- scores_data %>%
   group_by(peptide) %>%
@@ -271,3 +301,40 @@ scores_data %>%
   theme(axis.text.x = element_text(angle = 90))+
   labs(x = "Peptide")
 
+
+scores_pan <- read_csv("/Users/christianjohansen/Desktop/speciale/modeling/results/lstm_positive_allpep_scores.csv",
+                       col_names = c("ID", "peptide", "origin","partition", "score", "label"))
+scores_gil <- read_csv("/Users/christianjohansen/Desktop/speciale/modeling/results/GILattlstm_positive_GIL_scores.csv",
+                       col_names = c("ID", "peptide", "origin","partition", "score", "label"))
+scores_glc <- read_csv("/Users/christianjohansen/Desktop/speciale/modeling/results/GLCattlstm_positive_GLC_scores.csv",
+                       col_names = c("ID", "peptide", "origin", "partition","score", "label"))
+scores_nlv <- read_csv("/Users/christianjohansen/Desktop/speciale/modeling/results/NLVattlstm_positive_NLV_scores.csv",
+                       col_names = c("ID", "peptide", "origin", "partition","score", "label"))
+
+specific_scores <- bind_rows(scores_gil, scores_glc, scores_nlv) %>%
+  mutate(model = "Specific")
+
+positives_spec <- specific_scores %>%
+  filter(label == 1) %>%
+  select(ID, peptide)
+
+specific_scores <- specific_scores %>%
+  inner_join(positives_spec, by= "ID", suffix = c(".swapped", ".tcr_spec"))
+
+positives_pan <- scores_pan %>%
+  filter(label == 1 & peptide %in% c("NLVPMVATV", "GILGFVFTL", "GLCTLVAML")) %>%
+  select(ID, peptide)
+
+scores_pan <- scores_pan %>%
+  mutate(model = "Pan") %>%
+  inner_join(positives_pan, by= "ID", suffix = c(".swapped", ".tcr_spec"))
+
+# OBS here the peptide refers to the specificity of the TCR 
+# and not what it was paired with to generate the score (for swapped)
+bind_rows(specific_scores, scores_pan) %>%
+  ggplot(mapping = aes(x = peptide.tcr_spec, y = score, fill = origin))+
+  geom_boxplot()+
+  facet_wrap(~model)+
+  theme(axis.text.x = element_text(angle = 90))+
+  labs(x = "Peptide")
+  

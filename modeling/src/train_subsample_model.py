@@ -24,8 +24,8 @@ def main():
     #TRAIN_FILE = os.path.join(DATA_DIR, "datasets", f"train_data_subsample{sample}.csv")
     TRAIN_FILE = os.path.join(DATA_DIR, "datasets", "train_data_all.csv")
     TEST_FILE = os.path.join(DATA_DIR, "datasets", "train_data_all.csv")
-    MODEL_FILE = os.path.join(DATA_DIR, "models", "NLVpretrain_model.pt")
-    SCORE_FILE = os.path.join(DIR, "results", f"subsampling/pretrained_attlstmsingle_{peptide[:3]}{n_pos}_{sample_seed}.csv")
+    MODEL_FILE = os.path.join(DATA_DIR, "models", "NLVattlstm_model.pt")
+    #SCORE_FILE = os.path.join(DIR, "results", f"subsampling/pretrained_attlstmsingle_{peptide[:3]}{n_pos}_{sample_seed}.csv")
 
     PRETRAIN_MODEL = os.path.join(DATA_DIR, "models", "noNLV100_attlstm_pretrained.pt")
 
@@ -175,7 +175,7 @@ def main():
     test_runner.evaluate_model()
     plt.title("Test Data")
     plt.show()
-    test_runner.scores_to_file(SCORE_FILE)
+    #test_runner.scores_to_file(SCORE_FILE)
 
     
     print("Final model saved at:", MODEL_FILE)

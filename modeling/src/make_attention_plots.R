@@ -3,6 +3,7 @@ library(tidyverse)
 library(RColorBrewer)
 library(rlang)
 library(docstring)
+library(patchwork)
 
 
 # Functions for wrangling and plotting ------------------------------------
@@ -55,14 +56,16 @@ attention_plot_cdrs <- function(df, len){
   )+
   scale_x_continuous(breaks = seq(1, len, by = 1))+
   theme_minimal()+
-  labs(color="Peptide", x="Position")+
+  labs(color="")+
   theme(axis.line.y = element_blank(),
         axis.ticks.y = element_blank(),
         axis.title.y = element_blank(),
+        axis.title.x = element_blank(),
         axis.text.y = element_blank(),
         panel.background = element_blank(),
         panel.grid.minor = element_blank(),
-        panel.grid.major = element_blank())
+        panel.grid.major = element_blank(),
+        legend.position = "bottom")
 }
 
 attention_plot_tcrs <- function(df, anno){
@@ -88,15 +91,17 @@ attention_plot_tcrs <- function(df, anno){
       aesthetics = "fill"
     )+
     theme_minimal()+
-    labs(color="Peptide", x="Position")+
+    labs(color="", x="")+
     theme(axis.line.y = element_blank(),
           axis.ticks.y = element_blank(),
           axis.title.y = element_blank(),
           axis.text.y = element_blank(),
           axis.text.x = element_blank(),
+          axis.title.x = element_blank(),
           panel.background = element_blank(),
           panel.grid.minor = element_blank(),
-          panel.grid.major = element_blank(),)
+          panel.grid.major = element_blank(),
+          legend.position = "bottom")
 }
 
 # Load Data ---------------------------------------------------------------
@@ -108,6 +113,7 @@ all_data <- read_csv('/Users/christianjohansen/Desktop/speciale/modeling/data/da
 cdr3b_data_f <- wrangle_feature(data_cdrs, "positive", "cdr3b", "forward")
 cdr3b_data_f_neg <- wrangle_feature(data_cdrs, "10x", "cdr3b", "forward")
 cdr3a_data_f <- wrangle_feature(data_cdrs, "positive", "cdr3a", "forward")
+cdr3a_data_f_neg <- wrangle_feature(data_cdrs, "10x", "cdr3a", "forward")
 cdr3a_data_r <- wrangle_feature(data_cdrs, "positive", "cdr3a", "reverse")
 
 tcrb_data_f <- wrangle_feature(data_tcrs, "positive", "cdr3b", "forward")
@@ -122,14 +128,21 @@ anno_beta = list("cdr1_start" = 22, "cdr1_end" = 28,
                   "cdr2_start" = 47, "cdr2_end" = 55,
                   "cdr3_start" = 89, "cdr3_end" = 107)
 
-attention_plot_tcrs(tcra_data_f, anno_alpha)
-attention_plot_tcrs(tcrb_data_f, anno_beta)
-attention_plot_cdrs(cdr3a_data_f, 15)
-attention_plot_cdrs(cdr3b_data_f, 17)
-attention_plot_cdrs(cdr3a_data_r, 17)
+plot1 <- attention_plot_tcrs(tcra_data_f, anno_alpha)
+plot2 <- attention_plot_tcrs(tcrb_data_f, anno_beta)
+plot1 + plot2 + plot_layout(guides = "collect") + plot_annotation(tag_levels = 'A')& theme(legend.position = "bottom",
+                                                                                           plot.tag = element_text(face = "bold"))
+   
+plot1 <- attention_plot_cdrs(cdr3a_data_f, 15)
+plot2 <- attention_plot_cdrs(cdr3a_data_f_neg, 15)
+(plot1 + plot2) + plot_layout(guides = "collect") + plot_annotation(tag_levels = 'A')& theme(legend.position = "bottom",
+                                                                                           plot.tag = element_text(face = "bold"))
+attention_plot_cdrs(cdr3a_data_r, 15)
 
-attention_plot_cdrs(cdr3b_data_f_neg, 17)
-
+plot3 <- attention_plot_cdrs(cdr3b_data_f, 17)
+plot4 <-attention_plot_cdrs(cdr3b_data_f_neg, 17)
+(plot1 + plot2) / (plot3 + plot4) + plot_layout(guides = "collect") + plot_annotation(tag_levels = 'A')& theme(legend.position = "bottom",
+                                                                                           plot.tag = element_text(face = "bold"))
 
 
 # Wrangle data for CDR3 length plot

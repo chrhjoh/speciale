@@ -34,6 +34,7 @@ def create_dataframe(filename, seed):
     df = pd.read_csv(filename, index_col=0)
     df = df.loc[df.label == 1]
     peptides = pd.unique(df["pep"])
+    df = df.loc[df.pep == "NLVPMVATV"] # GLCTLVAML NLVPMVATV GILGFVFTL
     swapped_dfs = []
     for index, row in df.iterrows():
         swapped_dfs.append(make_swapped_tcrs(row, peptides, seed))
@@ -46,8 +47,7 @@ def do_predictions(data, net, device, score_file):
     sequences = ["pep", 
                  "cdr1a", "cdr2a", "cdr3a",
                  "cdr1b", "cdr2b", "cdr3b",]
-    ENCODING = "tokenize"
-
+    ENCODING = "encode"
 
     # Loader parameters
     BATCH_SIZE = 64
@@ -78,13 +78,11 @@ def main():
     DIR = "/Users/christianjohansen/Desktop/speciale/modeling/"
     DATA_DIR = os.path.join(DIR, "data")
     DATA_FILE = os.path.join(DATA_DIR, "datasets/train_data_all.csv")
-    SCORE_FILE = os.path.join(DIR, "results/lstm_positive_allpep_scores.csv")
-    MODEL_FILE = os.path.join(DATA_DIR, "models/lstm_cdr_model.pt")
+    SCORE_FILE = os.path.join(DIR, "results/NLVattlstm_positive_NLV_scores.csv")
+    MODEL_FILE = os.path.join(DATA_DIR, "models/NLVattlstm_model.pt")
 
     data = create_dataframe(DATA_FILE, SEED)
-    cdr3a_embedding = KeyedVectors.load(os.path.join(DATA_DIR, "encoding/embeddings_cdr3a.wv"))
-    cdr3b_embedding = KeyedVectors.load(os.path.join(DATA_DIR, "encoding/embeddings_cdr3b.wv"))
-    net = EmbedAttentionNet(cdr3a_embedding, cdr3b_embedding)
+    net = AttentionNet()
     device = torch.device("cuda" if cuda.is_available() else "cpu")
     net.to(device)
     net.load_state_dict(torch.load(MODEL_FILE))
