@@ -120,30 +120,45 @@ tcrb_data_f <- wrangle_feature(data_tcrs, "positive", "cdr3b", "forward")
 tcra_data_f <- wrangle_feature(data_tcrs, "positive", "cdr3a", "forward")
 
 
-# Plot Data ---------------------------------------------------------------
+# Calculate fraction of attention in CDRs ---------------------------------
 anno_alpha = list("cdr1_start" = 20, "cdr1_end" = 27, 
-            "cdr2_start" = 45, "cdr2_end" = 54,
-            "cdr3_start" = 84, "cdr3_end" = 101)
+                  "cdr2_start" = 45, "cdr2_end" = 54,
+                  "cdr3_start" = 84, "cdr3_end" = 101)
 anno_beta = list("cdr1_start" = 22, "cdr1_end" = 28, 
-                  "cdr2_start" = 47, "cdr2_end" = 55,
-                  "cdr3_start" = 89, "cdr3_end" = 107)
+                 "cdr2_start" = 47, "cdr2_end" = 55,
+                 "cdr3_start" = 89, "cdr3_end" = 107)
 
+estimate_used_attention <- function(low, high, att){
+  att %>%
+    group_by(position) %>%
+    summarise(attention = mean(attention)) %>%
+    filter(low < position & position < high) %>%
+    summarise(predicted = sum(attention),
+              expected = (high - low) / max(att$position) )
+}
+
+
+estimate_used_attention(anno_alpha$cdr3_start, anno_alpha$cdr3_end, tcra_data_f)
+estimate_used_attention(anno_beta$cdr3_start, anno_beta$cdr3_end, tcrb_data_f)
+
+# Plot Data ---------------------------------------------------------------
 plot1 <- attention_plot_tcrs(tcra_data_f, anno_alpha)
 plot2 <- attention_plot_tcrs(tcrb_data_f, anno_beta)
 plot1 + plot2 + plot_layout(guides = "collect") + plot_annotation(tag_levels = 'A')& theme(legend.position = "bottom",
                                                                                            plot.tag = element_text(face = "bold"))
-   
 plot1 <- attention_plot_cdrs(cdr3a_data_f, 15)
 plot2 <- attention_plot_cdrs(cdr3a_data_f_neg, 15)
 (plot1 + plot2) + plot_layout(guides = "collect") + plot_annotation(tag_levels = 'A')& theme(legend.position = "bottom",
                                                                                            plot.tag = element_text(face = "bold"))
 attention_plot_cdrs(cdr3a_data_r, 15)
 
+
 plot3 <- attention_plot_cdrs(cdr3b_data_f, 17)
 plot4 <-attention_plot_cdrs(cdr3b_data_f_neg, 17)
 (plot1 + plot2) / (plot3 + plot4) + plot_layout(guides = "collect") + plot_annotation(tag_levels = 'A')& theme(legend.position = "bottom",
                                                                                            plot.tag = element_text(face = "bold"))
 
+# Fraction of attention put into the annotated areas on the TCRs
 
 # Wrangle data for CDR3 length plot
 all_cdrs <- all_data %>%
