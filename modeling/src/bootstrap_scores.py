@@ -9,6 +9,10 @@ def read_file(dir: str, file: str, use_header: bool = False):
     else:
         return pd.read_csv(os.path.join(dir, file), names=["ID", "peptide", "origin", "partition", "score", "label"])
 
+def read_baseline(dir: str, file: str):
+    df=pd.read_csv(os.path.join(dir, file), names=["cdr3a", "cdr3b", "label", "cdr3a_q", "cdr3b_q", "score", "peptide"])
+    return df
+
 def sample_scores(df: pd.DataFrame):
     return df.sample(frac=1, replace=True)
 
@@ -27,17 +31,34 @@ def report_results(results: np.ndarray, wincounter):
     print(f"Average AUC across all bootstraps: {results.mean(axis=0)}")
     print(f"Significance from bootstrapping: {1 - wincounter / results.shape[0]}")
 
+
+def read_files(dir, prefix, suffix):
+    dfs = []
+    for suf in suffix:
+        dfs.append(pd.read_csv(os.path.join(dir, prefix+suf), names=["ID", "peptide", "origin", "partition", "score", "label"]))
+    df = pd.concat(dfs)
+    df = df.groupby("ID").agg({"peptide" : pd.Series.mode,
+                          "origin" : pd.Series.mode,
+                          "partition" : pd.Series.mode,
+                          "score" : "mean",
+                          "label" : pd.Series.mode})
+    return df
+
     
 def main():
 
-    DIR = "/Users/christianjohansen/Desktop/speciale/modeling/results"
-    FILE1 = "cnn_sequences_cdr3bpep_scores.csv"
-    FILE2 = "cnn_sequences_cdr3apep_scores.csv"
+    DIR = "/Users/christianjohansen/Desktop/speciale"
+    RES_DIR = os.path.join(DIR, "modeling/results/subsampling")
+    BASELINE_DIR = os.path.join(DIR, "baseline/out")
+    FILE1 = "attlstmpan_GIL359"
+    FILE2 = "pretrained_attlstmsingle_GIL359"
+    SUFFIXES = [".csv", "_1.csv","_2.csv","_3.csv","_4.csv", ]
     N = 10000
 
-    df1 = read_file(DIR, FILE1, use_header=False)
-    df2 = read_file(DIR, FILE2, use_header=False)
+    df1 = read_files(RES_DIR, FILE1, SUFFIXES)
+    df2 = read_files(RES_DIR, FILE2, SUFFIXES)
     df = pd.merge(df1, df2, how="inner", on="ID")
+    df = df[df.peptide_x == "GILGFVFTL"]
     print(df1.shape, df2.shape, df.shape)
     results = np.zeros((N, 2))
     df1_wincount = 0

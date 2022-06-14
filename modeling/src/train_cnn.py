@@ -28,13 +28,13 @@ def main():
     ############ PARAMETERS ##############
     DIR = "/Users/christianjohansen/Desktop/speciale/modeling"
     DATA_DIR = os.path.join(DIR,"data")
-    DATA_FILE = os.path.join(DATA_DIR, "datasets/train_data_90neg_90pos_energy.csv")
+    DATA_FILE = os.path.join(DATA_DIR, "datasets/train_data_95neg_95pos_energy.csv")
     MODEL_FILE = os.path.join(DATA_DIR, "models/test_model.pt")
     #ATTENTION_FILE = os.path.join(DIR, 'results/cnn_att_partition5.csv')
     #ACTIVATION_FILE = os.path.join(DIR, 'results/cnn_act_partition5.csv')
-    SCORE_FILE = os.path.join(DIR, 'results/cnn_90_cv_scores.csv')
+    SCORE_FILE = os.path.join(DIR, 'results/cnn_92_cv_scores.csv')
 
-    CLI=True
+    CLI=False
     # Data parameters
     if CLI:
         PARTITIONS = set(range(1, 6))
@@ -176,7 +176,7 @@ def main():
     if not CLI:
         print("Evaluation on Training Data:")
         train_runner.evaluate_model()
-        plt.title("Training Data")
+        #plt.title("Training Data")
         plt.show()
 
         print("Evaluation on Validation Data:")

@@ -45,10 +45,6 @@ class CdrCNN(nn.Module):
         self.cdr3a = np.arange(24, 39)
         self.cdr3b = np.arange(52, 69)
 
-        self.cdr3a = np.arange(9, 125)
-        self.cdr3b = np.arange(125, 238)
-        self.mhc = np.arange(238, 417)
-
         # CDR3a
         self.cdr3a_conv = nn.Conv1d(in_channels  = self.n_local_feat,
                                     out_channels = cnn_channels,
@@ -65,12 +61,6 @@ class CdrCNN(nn.Module):
 
         # Peptide
         self.pep_conv = nn.Conv1d(in_channels  = self.n_local_feat,
-                                  out_channels = cnn_channels,
-                                  kernel_size  = cnn_kernel_size,
-                                  stride       = cnn_stride,
-                                  padding      = cnn_padding)
-        
-        self.mhc_conv = nn.Conv1d(in_channels  = self.n_local_feat,
                                   out_channels = cnn_channels,
                                   kernel_size  = cnn_kernel_size,
                                   stride       = cnn_stride,
@@ -110,7 +100,7 @@ class CdrCNN(nn.Module):
                                         padding      = cnn_padding)
             n_convs = 7
         else:
-            n_convs = 4
+            n_convs = 3
 
         ############ DENSE LAYERS #############
         if self.use_global_features:
@@ -175,7 +165,6 @@ class CdrCNN(nn.Module):
         pep_pooled = self._forward_seq_feat(x, self.pep, self.pep_conv, max_pooler)
         cdr3a_pooled = self._forward_seq_feat(x, self.cdr3a, self.cdr3a_conv, max_pooler)
         cdr3b_pooled = self._forward_seq_feat(x, self.cdr3b, self.cdr3b_conv, max_pooler)
-        mhc_pooled = self._forward_seq_feat(x, self.mhc, self.mhc_conv, max_pooler)
 
         if self.use_all_cdrs:
             cdr1a_pooled = self._forward_seq_feat(x, self.cdr1a, self.cdr1a_conv, max_pooler)
@@ -186,7 +175,7 @@ class CdrCNN(nn.Module):
             features = [pep_pooled, cdr1a_pooled, cdr2a_pooled, cdr3a_pooled,
                         cdr1b_pooled, cdr2b_pooled, cdr3b_pooled]
         else:
-            features = [pep_pooled, cdr3a_pooled, cdr3b_pooled, mhc_pooled]
+            features = [pep_pooled, cdr3a_pooled, cdr3b_pooled]
 
         if return_attention:
             return self.clean_maxpool_output(features)
