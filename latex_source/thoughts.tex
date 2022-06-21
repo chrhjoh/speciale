@@ -1,0 +1,20 @@
+Det er for dyrt at skulle opnå 100 tcr per peptid. Derfor skal man enten prøve at nedsætte mængden af datapunkter der er nødvendige eller forsøge med noget transfer learning.
+
+attention. context vector kan ses som en high level query. 
+
+Remember to check for alphas and betas in the CDR/TCR 
+
+Remember to check for correct abbrevations at first occurence.
+
+Ordet modelling skal gennemgåes
+
+Tilføj tables for observationer for redundancy reduction datasæt?
+
+Pretraining bør måske uddybes lidt. Hvordan er det udført? hvilke måder er det gjort. Pretrained på et enkelt peptid og brugt til at predicte i en pan model og omvendt.
+
+Kig random sampling igennem i metode og sikre dig at det egentlig passer med det som bør gøres
+
+TCR match bruger også kernel similarity (find cite)
+
+Pan model er bedre til at predicte hvilket peptid en given positiv TCR vil være positiv mod. En specifik model er bedre til at predicte om en TCR vil binde den positive model. (Bør swapped være inkluderet for GLC). Inkludering af swapped vil bare force den til at alle andre peptider end den bliver negativ, med mindre den på en eller anden måde husker det.
+

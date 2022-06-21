@@ -1,0 +1,9 @@
+\section*{Abstract}
+The interaction between T-cell receptors (TCRs) and peptide major histocompatibility complexes (pMHC) is essential for the function of the adaptive immune system. Predictions of TCR-pMHC interactions have proven to be a challenge, but accurate predictions have the potential to further vaccine development and cancer treatments. 
+
+Here, we will model TCR-pMHC interactions using deep neural networks using a previously created benchmark dataset containing both sequences and predicted energy features. The best performance was obtained using only the peptide and paired complementarity-determining regions (CDR)3 sequences. The remaining sequences and all energy features were unable to provide additional information for models trained on the full dataset.
+
+Furthermore, we will show that attention mechanisms can capture sequence variations between binding and non-binding TCR sequences. Long short-term memory (LSTM) coupled with attention mechanisms also improved performance over convolutional neural networks (CNNs) and LSTMs without attention.
+
+Pan-specific and peptide-specific models showed comparable performances for predicting TCR-pMHC interactions, with pan-specific models performing slightly better when less data was used for training. Pan-specific models were also better at predicting peptide specificity and can be used to predict multiple peptide with the same model. TCR-pMHC binding predictions are feasible on peptides with a substantial number of observations. However, the models' ability to generalize to other peptides is most likely limited by a lack of data and additional TCRs for current and new peptides are needed for a truly pan-specific model.
+

@@ -1,0 +1,70 @@
+\documentclass[12pt,oneside,a4paper,english]{article}
+
+\input{preamble}
+% --- End of page settings ---
+
+\begin{document}
+\pagenumbering{roman} 
+\input{sources/Frontpage.tex}
+\input{sources/Preface}
+\newpage
+\input{sources/1_Abstract}
+\newpage
+%\addcontentsline{toc}{section}{Abbreviations}
+\input{sources/Abbreviations}
+%Table of contents
+\newpage
+\doublespacing
+%\addcontentsline{toc}{section}{Table of Contents}
+\renewcommand{\baselinestretch}{1}\normalsize
+\tableofcontents
+
+\renewcommand{\baselinestretch}{1}\normalsize
+%\singlespacing
+\thispagestyle{fancy} % force page style
+
+%%% Body of document %%%
+\newpage
+\pagenumbering{arabic} 
+\fancyfoot[C]{Page \thepage\ of \pageref{EndOfText}}
+
+\input{sources/2_introduction}
+\clearpage
+\input{sources/3_Materials and methods}
+\clearpage
+\input{sources/4_Results}
+\clearpage
+\input{sources/5_Discussion}
+\clearpage
+\input{sources/6_Conclusion} 
+
+\label{EndOfText}
+
+\newpage
+\pagenumbering{Roman} 
+\fancyfoot[C]{Page \thepage\ of \pageref{endOfDoc}}
+\section{References}
+\printbibliography[heading=none]
+
+\thispagestyle{fancy}
+
+%\newpage
+%\addcontentsline{toc}{section}{List of Figures}
+%\listoffigures
+%\thispagestyle{fancy}
+
+%\newpage
+%\addcontentsline{toc}{section}{List of Tables}
+%\listoftables
+%\thispagestyle{fancy}
+
+%\newpage
+%\addcontentsline{toc}{section}{Nomenclature}
+%\input{sources/9_nomenclat.tex}
+
+\newpage
+\section{Appendix} \label{ch6}
+\input{sources/Appendix A}
+
+\label{endOfDoc}
+\end{document}

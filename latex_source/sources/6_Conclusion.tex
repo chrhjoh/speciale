@@ -1,0 +1,9 @@
+\section{Conclusion} \label{conclusion}
+In this project, we have modelled TCR-pMHC interactions by training multiple deep learning models. By leaving out specific sequences, we showed that the CDR3 and peptide sequences are sufficient to obtain performance as good or better compared to using the entire sequence and predicted energy features. The attLSTM also showed an above-average amount of attention put on the CDR3{\textalpha} and CDR3{\textbeta}, further supporting that these sequences contain the largest amount of information for predicting TCR-pMHC interactions.
+
+The attention-based model was able to significantly outperform a similar model not utilizing attention when the amount of data was limited. The attention-based model's success could be because of the increased focus on residues that predominately occurs within positive sequences.
+
+While the network obtains a performance of 0.88, this performance is limited to only four peptides. For the remaining peptides the model only obtains random performance. The generation of additional data should help the model obtain meaningful performance for additional peptides and allow the model to generalize better to unseen data.
+
+Lastly, pan-specific models obtained comparable performance to peptide-specific models and even outperform peptide-specific versions when the number of training peptides was limited. Furthermore, pan-specific models had better performance when used for specificity predictions and only require one model in total, whereas peptide-specific models require one model for each peptide. These facts make pan-specific models preferred, especially in current settings where the number of observations is limited for most peptides.
+
